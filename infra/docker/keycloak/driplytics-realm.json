@@ -17,8 +17,12 @@
       "secret": "driplytics-web-dev-secret",
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": true,
-      "redirectUris": ["http://localhost:3000/*"],
-      "webOrigins": ["http://localhost:3000"],
+      "redirectUris": [
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000"
+      ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "http://localhost:3000/*"
@@ -27,22 +31,36 @@
   ],
   "users": [
     {
+      "id": "0a11ce00-0000-4000-8000-00000000a11c",
       "username": "alice",
       "email": "alice@riverbend.test",
       "firstName": "Alice",
       "lastName": "Riverbend",
       "enabled": true,
       "emailVerified": true,
-      "credentials": [{ "type": "password", "value": "Passw0rd!dev", "temporary": false }]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Passw0rd!dev",
+          "temporary": false
+        }
+      ]
     },
     {
+      "id": "00000b0b-0000-4000-8000-000000000b0b",
       "username": "bob",
       "email": "bob@lakeside.test",
       "firstName": "Bob",
       "lastName": "Lakeside",
       "enabled": true,
       "emailVerified": true,
-      "credentials": [{ "type": "password", "value": "Passw0rd!dev", "temporary": false }]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Passw0rd!dev",
+          "temporary": false
+        }
+      ]
     }
   ]
 }

@@ -71,10 +71,13 @@ INSERT INTO tenant (id, name, slug, plan) VALUES
   ('a1a1a1a1-0000-4000-8000-000000000001', 'Riverbend Water Treatment (synthetic)', 'riverbend', 'pilot'),
   ('b2b2b2b2-0000-4000-8000-000000000002', 'Lakeside Utilities (synthetic)', 'lakeside', 'pilot')
 ON CONFLICT (id) DO NOTHING;
-INSERT INTO app_user (email, display_name) VALUES
-  ('alice@riverbend.test', 'Alice Riverbend'),
-  ('bob@lakeside.test', 'Bob Lakeside')
-ON CONFLICT (email) DO NOTHING;
+-- Subjects are the fixed Keycloak user ids in infra/docker/keycloak/driplytics-realm.json. Keycloak's
+-- dev store is not persisted, so a re-created container re-imports the realm; pinning the ids (and
+-- re-asserting them here) keeps sign-in working when Postgres outlives Keycloak.
+INSERT INTO app_user (email, display_name, idp_subject) VALUES
+  ('alice@riverbend.test', 'Alice Riverbend', '0a11ce00-0000-4000-8000-00000000a11c'),
+  ('bob@lakeside.test', 'Bob Lakeside', '00000b0b-0000-4000-8000-000000000b0b')
+ON CONFLICT (email) DO UPDATE SET idp_subject = EXCLUDED.idp_subject;
 INSERT INTO membership (tenant_id, user_id, role)
   SELECT 'a1a1a1a1-0000-4000-8000-000000000001', id, 'owner' FROM app_user WHERE email = 'alice@riverbend.test'
 ON CONFLICT DO NOTHING;
@@ -89,7 +92,7 @@ ON CONFLICT (tenant_id, name) DO NOTHING;
 
 
 def seed_dev(admin_url: str) -> None:
-    """Demo tenants for local development. Users are linked to Keycloak on first sign-in by email."""
+    """Demo tenants and users for local development, pre-linked to the fixed Keycloak test users."""
     with psycopg.connect(admin_url, autocommit=False) as conn, conn.cursor() as cur:
         cur.execute(DEV_SEED)
 
