@@ -6,7 +6,11 @@ name: driplytics
 x-app-env: &app-env
   DRIPLYTICS_ENV: ${DRIPLYTICS_ENV:-local}
   DRIPLYTICS_LOG_LEVEL: ${DRIPLYTICS_LOG_LEVEL:-INFO}
-  DRIPLYTICS_DATABASE_URL: postgresql://${POSTGRES_USER:-driplytics}:${POSTGRES_PASSWORD:-driplytics-dev}@postgres:5432/${POSTGRES_DB:-driplytics}
+  # Runtime role: not superuser, no BYPASSRLS, so row-level security applies (ADR 0003).
+  DRIPLYTICS_DATABASE_URL: postgresql://driplytics_app:${APP_DB_PASSWORD:-driplytics-app-dev}@postgres:5432/${POSTGRES_DB:-driplytics}
+  # Tokens are issued for the browser-facing URL; keys are fetched over the internal network (ADR 0004).
+  DRIPLYTICS_OIDC_ISSUER: http://localhost:${KEYCLOAK_PORT:-8080}/realms/driplytics
+  DRIPLYTICS_OIDC_JWKS_URL: http://keycloak:8080/realms/driplytics/protocol/openid-connect/certs
   DRIPLYTICS_REDIS_URL: redis://redis:6379/0
   DRIPLYTICS_STORAGE_PROTOCOL: s3
   DRIPLYTICS_STORAGE_ENDPOINT_URL: http://minio:9000
@@ -79,6 +83,10 @@ services:
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin-dev}
+      # Always issue tokens as http://localhost:8080, even when called from inside Docker,
+      # so the API's issuer check matches; the API still fetches keys via http://keycloak:8080.
+      KC_HOSTNAME: http://localhost:${KEYCLOAK_PORT:-8080}
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
     ports: ["${KEYCLOAK_PORT:-8080}:8080"]
     volumes: ["./infra/docker/keycloak:/opt/keycloak/data/import:ro"]
     healthcheck:
@@ -95,6 +103,24 @@ services:
       start_period: 30s
 
   # ---------------------------------------------------------------- application
+  migrate:
+    # One-shot: create/refresh the runtime DB role, apply migrations, seed local demo tenants. Then exits.
+    build:
+      context: .
+      dockerfile: infra/docker/python.Dockerfile
+      args: { PACKAGE: driplytics-api }
+    command: ["python", "-m", "driplytics_api.db.migrate", "upgrade"]
+    environment:
+      <<: *app-env
+      # Owner role: used ONLY by this container, never by the API or worker.
+      DRIPLYTICS_MIGRATION_DATABASE_URL: postgresql://${POSTGRES_USER:-driplytics}:${POSTGRES_PASSWORD:-driplytics-dev}@postgres:5432/${POSTGRES_DB:-driplytics}
+    volumes:
+      - ./apps/api/src:/app/apps/api/src
+      - ./apps/api/migrations:/app/apps/api/migrations
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: "no"
+
   api:
     build:
       context: .
@@ -113,7 +139,7 @@ services:
       - ./apps/api/src:/app/apps/api/src
       - ./engine/src:/app/engine/src
     depends_on:
-      postgres: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
       minio: { condition: service_started }
     healthcheck:
@@ -135,7 +161,7 @@ services:
       - ./engine/src:/app/engine/src
     depends_on:
       redis: { condition: service_healthy }
-      postgres: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
       minio: { condition: service_started }
     healthcheck:
       test: ["CMD", "arq", "--check", "driplytics_worker.main.WorkerSettings"]

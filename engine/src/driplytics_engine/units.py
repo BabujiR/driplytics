@@ -3,6 +3,7 @@
 Each dimension has a base unit. Converting src -> dst goes src -> base -> dst.
 Unit names are case-insensitive and whitespace-insensitive.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -13,10 +14,10 @@ _UNITS: dict[str, tuple[str, float, float]] = {
     # volume, base m3
     "m3": ("volume", 1.0, 0.0),
     "l": ("volume", 1e-3, 0.0),
-    "ml": ("volume", 1e3, 0.0),          # megalitre (water-industry usage)
+    "ml": ("volume", 1e3, 0.0),  # megalitre (water-industry usage)
     "gal": ("volume", 0.003785411784, 0.0),
     "kgal": ("volume", 3.785411784, 0.0),
-    "mg": ("volume", 3785.411784, 0.0),   # million US gallons
+    "mg": ("volume", 3785.411784, 0.0),  # million US gallons
     "ft3": ("volume", 0.028316846592, 0.0),
     "af": ("volume", 1233.48183754752, 0.0),  # acre-foot
     # volumetric flow, base m3/h
@@ -50,10 +51,25 @@ _UNITS: dict[str, tuple[str, float, float]] = {
 }
 
 _ALIASES = {
-    "m³": "m3", "m³/h": "m3/h", "m3/hr": "m3/h", "cmh": "m3/h", "lps": "l/s",
-    "gallons": "gal", "usgal": "gal", "us gal": "gal", "gal/min": "gpm", "usgpm": "gpm",
-    "°c": "degc", "c": "degc", "°f": "degf", "f": "degf", "psig": "psi", "percent": "%",
-    "cf": "ft3", "cuft": "ft3", "mgal": "mg",
+    "m³": "m3",
+    "m³/h": "m3/h",
+    "m3/hr": "m3/h",
+    "cmh": "m3/h",
+    "lps": "l/s",
+    "gallons": "gal",
+    "usgal": "gal",
+    "us gal": "gal",
+    "gal/min": "gpm",
+    "usgpm": "gpm",
+    "°c": "degc",
+    "c": "degc",
+    "°f": "degf",
+    "f": "degf",
+    "psig": "psi",
+    "percent": "%",
+    "cf": "ft3",
+    "cuft": "ft3",
+    "mgal": "mg",
 }
 
 

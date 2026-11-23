@@ -8,6 +8,7 @@ from starlette.concurrency import run_in_threadpool
 
 from . import __version__
 from .health import CHECKS
+from .routes import me
 from .settings import get_settings
 
 settings = get_settings()
@@ -19,6 +20,7 @@ app = FastAPI(
     docs_url="/api/docs",
     openapi_url="/api/openapi.json",
 )
+app.include_router(me.router)
 
 
 @app.get("/health/live", tags=["health"])

@@ -8,10 +8,10 @@ Estimates are in focused days for one developer working with an AI coding agent.
 | P0-02 | Python workspace with `uv`: `apps/api`, `services/worker`, `engine` as members; Ruff + mypy config | P0-01 | 0.5 | ✅ done (verify locally: `.\tasks.ps1 install`, `test`, `dev`) |
 | P0-03 | JS workspace with pnpm + Turborepo: `apps/web`, `packages/ui`, `packages/contracts`; ESLint, Prettier, Vitest | P0-01 | 0.5 | ✅ done (verify locally: `.\tasks.ps1 install`, `test`, `dev`) |
 | P0-04 | Docker Compose: Postgres 16, Redis, MinIO, Mailpit, Keycloak (dev auth), API, worker, web; health checks; `make dev` | P0-02, P0-03 | 1.0 | ✅ done (verify locally: `.\tasks.ps1 install`, `test`, `dev`) |
-| P0-05 | Engine housekeeping: rename to `driplytics_engine`, fsspec/S3 paths, progress callback; all tests still pass | P0-02 | 0.5 | ready |
-| P0-06 | Database migrations (Alembic) for the Phase 0 tables + row-level security policies | P0-04 | 1.0 | ready (ADR 0003) |
-| P0-07 | Cross-tenant isolation test suite (runs in CI) | P0-06 | 0.5 | blocked by P0-06 |
-| P0-08 | Auth: OIDC login, session handling, `/me`, role checks, membership model | P0-06 | 1.5 | ready (ADR 0004; Keycloak locally) |
+| P0-05 | Engine housekeeping: rename to `driplytics_engine`, fsspec/S3 paths, progress callback; all tests still pass | P0-02 | 0.5 | ✅ done: `driplytics_engine`, object-storage paths (fsspec), progress callback, Ruff clean |
+| P0-06 | Database migrations (Alembic) for the Phase 0 tables + row-level security policies | P0-04 | 1.0 | ✅ done: schema + forced RLS verified on PostgreSQL 16; `migrate` service; dev seed (ADR 0018) |
+| P0-07 | Cross-tenant isolation test suite (runs in CI) | P0-06 | 0.5 | ✅ done: `apps/api/tests/db/` isolation + schema lint (run with the stack up: `.\tasks.ps1 test-db`) |
+| P0-08 | Auth: OIDC login, session handling, `/me`, role checks, membership model | P0-06 | 1.5 | ✅ API done: OIDC verify, provisioning, `/api/v1/me`, tenant + role checks. Web sign-in screen → P0-16 |
 | P0-09 | Audit log service + middleware (who, what, before/after) | P0-06 | 0.5 | blocked by P0-06 |
 | P0-10 | Site CRUD endpoints + export profile model | P0-08 | 0.5 | blocked by P0-08 |
 | P0-11 | Upload flow: presigned multipart URLs, import record, `start` endpoint | P0-10 | 1.0 | blocked by P0-10 |

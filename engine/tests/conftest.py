@@ -15,6 +15,7 @@ DATA = ROOT / "tests" / "fixtures" / "data"
 def data_dir() -> Path:
     if not (DATA / "expected.json").exists():
         from generate import generate
+
         generate(DATA)
     return DATA
 
@@ -26,5 +27,6 @@ def expected(data_dir) -> dict:
 
 @pytest.fixture(scope="session")
 def mapping(data_dir):
-    from plant_ingest import TagMapping
+    from driplytics_engine import TagMapping
+
     return TagMapping.from_csv(data_dir / "tag_mapping.csv")

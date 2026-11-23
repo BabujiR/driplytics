@@ -18,6 +18,7 @@ ascending time order in the export, which is how PI and IP.21 write them.
 Timestamps that already carry an offset ("...-04:00" or "Z") or are tz-aware in
 Parquet are converted directly; no guessing is needed.
 """
+
 from __future__ import annotations
 
 import re
@@ -57,14 +58,15 @@ class LocalizeStats:
     ambiguous_second_pass: int = 0
     nonexistent: int = 0
 
-    def add(self, other: "LocalizeStats") -> None:
+    def add(self, other: LocalizeStats) -> None:
         self.ambiguous_first_pass += other.ambiguous_first_pass
         self.ambiguous_second_pass += other.ambiguous_second_pass
         self.nonexistent += other.nonexistent
 
 
-def localize_to_utc(local: pd.Series, group: pd.Series | None, tz: str
-                    ) -> tuple[pd.Series, np.ndarray, LocalizeStats]:
+def localize_to_utc(
+    local: pd.Series, group: pd.Series | None, tz: str
+) -> tuple[pd.Series, np.ndarray, LocalizeStats]:
     """Convert naive local timestamps (in file order) to UTC.
 
     Returns (utc_series, nonexistent_mask, stats). NaT inputs stay NaT and are not
@@ -85,8 +87,10 @@ def localize_to_utc(local: pd.Series, group: pd.Series | None, tz: str
     if amb.any():
         idx = np.flatnonzero(amb)
         l_amb = local.iloc[idx]
-        keys = [group.iloc[idx].to_numpy() if group is not None else np.zeros(len(idx)),
-                l_amb.dt.floor("D").to_numpy()]
+        keys = [
+            group.iloc[idx].to_numpy() if group is not None else np.zeros(len(idx)),
+            l_amb.dt.floor("D").to_numpy(),
+        ]
         # previous ambiguous row of the same tag on the same day, in file order
         prev = l_amb.groupby(keys, sort=False).shift()
         jump = (l_amb < prev).astype("int8")

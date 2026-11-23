@@ -1,22 +1,24 @@
-import numpy as np
 import pandas as pd
 import pytest
 
-from plant_ingest.constants import Quality
-from plant_ingest.quality import is_digital_state, normalize_quality
-from plant_ingest.timeconv import localize_to_utc, parse_timestamps
-from plant_ingest.units import UnitError, convert
+from driplytics_engine.constants import Quality
+from driplytics_engine.quality import is_digital_state, normalize_quality
+from driplytics_engine.timeconv import localize_to_utc, parse_timestamps
+from driplytics_engine.units import UnitError, convert
 
 
 # ---------------------------------------------------------------- units
-@pytest.mark.parametrize("v,src,dst,want", [
-    (100, "gpm", "m3/h", 22.7124707),
-    (1, "MGD", "gpm", 694.444),
-    (212, "degF", "degC", 100.0),
-    (0, "degC", "K", 273.15),
-    (14.5038, "psi", "bar", 1.0),
-    (1, "kgal", "gal", 1000.0),
-])
+@pytest.mark.parametrize(
+    "v,src,dst,want",
+    [
+        (100, "gpm", "m3/h", 22.7124707),
+        (1, "MGD", "gpm", 694.444),
+        (212, "degF", "degC", 100.0),
+        (0, "degC", "K", 273.15),
+        (14.5038, "psi", "bar", 1.0),
+        (1, "kgal", "gal", 1000.0),
+    ],
+)
 def test_convert(v, src, dst, want):
     assert convert(v, src, dst) == pytest.approx(want, rel=1e-4)
 
@@ -56,8 +58,7 @@ def test_digital_states():
 
 # ---------------------------------------------------------------- time / DST
 def test_fall_back_hour_resolved_by_file_order():
-    local = parse_timestamps(pd.Series(
-        ["2026-11-01 01:59:50", "2026-11-01 01:00:00", "2026-11-01 01:00:10"]))
+    local = parse_timestamps(pd.Series(["2026-11-01 01:59:50", "2026-11-01 01:00:00", "2026-11-01 01:00:10"]))
     utc, nonexist, st = localize_to_utc(local, pd.Series(["A"] * 3), "America/New_York")
     assert [t.strftime("%H:%M:%S") for t in utc] == ["05:59:50", "06:00:00", "06:00:10"]
     assert not nonexist.any() and st.ambiguous_second_pass == 2

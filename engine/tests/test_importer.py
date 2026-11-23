@@ -2,10 +2,15 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from plant_ingest import ExportLayout, ImportConfig, TagMapping, import_historian_export, import_large_file
-from plant_ingest.mapping import MappingError
-from plant_ingest.report import ImportReport, UnbalancedLedgerError
-from plant_ingest.totalizer import totalizer_to_rate
+from driplytics_engine import (
+    ExportLayout,
+    TagMapping,
+    import_historian_export,
+    import_large_file,
+)
+from driplytics_engine.mapping import MappingError
+from driplytics_engine.report import ImportReport, UnbalancedLedgerError
+from driplytics_engine.totalizer import totalizer_to_rate
 
 
 @pytest.fixture(scope="module")
@@ -102,14 +107,16 @@ def test_totalizer_rate_through_rollover_reset_and_dst(long_result):
     rate = v[v.tag == "inlet_volume_rate"]
     assert rate["derived"].all()
     assert rate["value"].to_numpy() == pytest.approx(250.0, abs=0.01)  # constant 250 gpm
-    assert len(rate) == 841 - 2                                         # first sample + reset interval
+    assert len(rate) == 841 - 2  # first sample + reset interval
     ev = {e["event"] for e in long_result.report.totalizer_events}
     assert ev == {"rollover", "reset"}
 
 
 def test_totalizer_gap_gives_no_rate(mapping):
     spec = mapping["FQI-101.TOT"]
-    ts = pd.Series(pd.to_datetime(["2026-01-01 00:00:00", "2026-01-01 00:00:10", "2026-01-01 01:00:00"], utc=True))
+    ts = pd.Series(
+        pd.to_datetime(["2026-01-01 00:00:00", "2026-01-01 00:00:10", "2026-01-01 01:00:00"], utc=True)
+    )
     out, _, gaps = totalizer_to_rate(ts, np.array([0, 41.6667, 9999]), pd.Series(["good"] * 3), spec)
     assert len(out) == 1 and gaps == 1
 
@@ -121,28 +128,46 @@ def test_uncertain_quality_kept_and_counted(long_result):
 
 # ---------------------------------------------------------------- wide format
 def test_wide_format(data_dir, mapping, expected):
-    r = import_historian_export(data_dir / "historian_wide.csv", mapping, ExportLayout(quality_suffix=" Quality"))
+    r = import_historian_export(
+        data_dir / "historian_wide.csv", mapping, ExportLayout(quality_suffix=" Quality")
+    )
     e = expected["wide"]
     assert r.report.format == "wide"
-    assert (r.report.total_values, r.report.accepted, r.report.rejected, r.report.duplicates) == \
-           (e["total_values"], e["accepted"], e["rejected"], e["duplicates"])
+    assert (r.report.total_values, r.report.accepted, r.report.rejected, r.report.duplicates) == (
+        e["total_values"],
+        e["accepted"],
+        e["rejected"],
+        e["duplicates"],
+    )
     assert {k: v for k, v in r.report.rejected_by_reason.items() if v} == e["rejected_by_reason"]
 
 
 def test_wide_blank_cells_can_be_ignored(data_dir, mapping):
-    r = import_historian_export(data_dir / "historian_wide.csv", mapping,
-                                ExportLayout(quality_suffix=" Quality", wide_blank_cells="ignore"))
+    r = import_historian_export(
+        data_dir / "historian_wide.csv",
+        mapping,
+        ExportLayout(quality_suffix=" Quality", wide_blank_cells="ignore"),
+    )
     assert r.report.blank_cells_ignored == 3 and r.report.rejected_by_reason["empty_value"] == 0
     assert r.report.accepted + r.report.rejected + r.report.duplicates == r.report.total_values
 
 
 # ---------------------------------------------------------------- mapping validation
 def test_mapping_validation_errors():
-    bad = pd.DataFrame([
-        dict(raw_tag="A", canonical_tag="a", role="flow", source_unit="gpm", target_unit="psi"),
-        dict(raw_tag="B", canonical_tag="b", role="valve_state"),
-        dict(raw_tag="C", canonical_tag="c", role="flow", source_unit="gpm", target_unit="gpm", is_totalizer="true"),
-    ])
+    bad = pd.DataFrame(
+        [
+            dict(raw_tag="A", canonical_tag="a", role="flow", source_unit="gpm", target_unit="psi"),
+            dict(raw_tag="B", canonical_tag="b", role="valve_state"),
+            dict(
+                raw_tag="C",
+                canonical_tag="c",
+                role="flow",
+                source_unit="gpm",
+                target_unit="gpm",
+                is_totalizer="true",
+            ),
+        ]
+    )
     with pytest.raises(MappingError) as e:
         TagMapping.from_frame(bad)
     msg = str(e.value)
@@ -153,7 +178,12 @@ def test_mapping_validation_errors():
 def test_large_path_matches_in_memory(tmp_path, data_dir, mapping, long_result):
     big = import_large_file(data_dir / "historian_long.csv", mapping, tmp_path, chunksize=700)
     a, b = big.report, long_result.report
-    assert (a.total_values, a.accepted, a.rejected, a.duplicates) == (b.total_values, b.accepted, b.rejected, b.duplicates)
+    assert (a.total_values, a.accepted, a.rejected, a.duplicates) == (
+        b.total_values,
+        b.accepted,
+        b.rejected,
+        b.duplicates,
+    )
     assert a.rejected_by_reason == b.rejected_by_reason and a.dst == b.dst
     files = sorted((tmp_path / "values").iterdir())
     vals = pd.concat([pd.read_parquet(f) if f.suffix == ".parquet" else pd.read_pickle(f) for f in files])

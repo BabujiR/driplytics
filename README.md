@@ -43,11 +43,21 @@ When the stack is healthy (`.\tasks.ps1 ps` shows every service as *healthy*):
 
 All passwords above are **local development defaults only**.
 
+**Try sign-in end to end** (stack running): `.\tasks.ps1 token` signs in to Keycloak as `alice`, calls
+`GET /api/v1/me`, then `GET /api/v1/tenants/current` for her organization (Riverbend, synthetic).
+Use `uv run python apps/api/scripts/dev_token.py bob --tenant` for the Lakeside user.
+
+**Database:** the one-shot `migrate` container applies migrations and seeds the two demo tenants before the
+API starts. The API and worker connect as `driplytics_app`, which row-level security applies to (ADR 0003, 0018).
+Run `.\tasks.ps1 test-db` for the cross-tenant isolation tests (they create and drop their own database).
+
 If PowerShell blocks the script: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 
 ## Project status
 
-**Phase 0 (foundations) in progress.** P0-01 to P0-04 are done: monorepo, Python and JS workspaces, Docker Compose stack. Next: P0-05 to P0-08 (engine housekeeping, database + row-level security, auth).
+**Phase 0 (foundations) in progress.** P0-01 to P0-08 are done: monorepo, workspaces, Docker stack, engine
+housekeeping, database schema with row-level security, isolation tests, and API sign-in with roles.
+Next: P0-09 (audit log), P0-10 to P0-13 (sites, upload, import job, generated API client).
 
 ## Repository guide
 

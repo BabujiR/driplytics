@@ -17,6 +17,7 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["engine/tests", "apps/api/tests", "services/worker/tests"]
 addopts = "--import-mode=importlib -q"
+markers = ["db: needs PostgreSQL (docker compose up -d postgres); skipped when it is not reachable"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [
@@ -27,8 +28,7 @@ filterwarnings = [
 [tool.ruff]
 line-length = 110
 target-version = "py312"
-# The engine predates these lint rules; it is brought under lint and mypy in P0-05.
-extend-exclude = ["engine", "**/node_modules", "**/.next"]
+extend-exclude = ["**/node_modules", "**/.next", "engine/tests/fixtures/data"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF", "ASYNC", "S"]
@@ -36,9 +36,13 @@ ignore = ["S101"]  # assert is fine in tests
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["S", "B"]
+# SQL-heavy files: long SQL lines read better unwrapped
+"apps/api/tests/db/conftest.py" = ["E501"]
+"apps/api/src/driplytics_api/db/migrate.py" = ["E501"]
+"apps/api/scripts/*" = ["S310"]  # local-dev helper calling http://localhost only
 
 [tool.ruff.lint.isort]
-known-first-party = ["driplytics_api", "driplytics_worker", "plant_ingest"]
+known-first-party = ["driplytics_api", "driplytics_worker", "driplytics_engine"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -48,5 +52,5 @@ plugins = ["pydantic.mypy"]
 warn_unreachable = true
 
 [[tool.mypy.overrides]]
-module = ["arq.*", "s3fs.*", "fsspec.*", "plant_ingest.*"]
+module = ["arq.*", "s3fs.*", "fsspec.*", "driplytics_engine.*"]
 ignore_missing_imports = true

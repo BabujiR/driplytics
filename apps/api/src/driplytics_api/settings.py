@@ -11,7 +11,10 @@ class Settings(BaseSettings):
     env: str = "local"
     log_level: str = "INFO"
 
-    database_url: str = "postgresql://driplytics:driplytics-dev@localhost:5432/driplytics"
+    # Runtime role: never superuser, never BYPASSRLS (ADR 0003). Must be named driplytics_app.
+    database_url: str = "postgresql://driplytics_app:driplytics-app-dev@localhost:5432/driplytics"
+    # Owner/admin role for migrations and provisioning only. Never used to serve requests.
+    migration_database_url: str = "postgresql://driplytics:driplytics-dev@localhost:5432/driplytics"
     redis_url: str = "redis://localhost:6379/0"
 
     # Object storage through fsspec: s3:// for MinIO/S3, gs:// for Google Cloud Storage.
@@ -26,6 +29,17 @@ class Settings(BaseSettings):
     storage_auto_create_buckets: bool = False
 
     readiness_timeout_s: float = 3.0
+
+    # OIDC (ADR 0004). Locally: Keycloak. Tokens must come from this issuer and one of these clients.
+    oidc_issuer: str = "http://localhost:8080/realms/driplytics"
+    oidc_jwks_url: str | None = None  # default: <issuer>/protocol/openid-connect/certs (Keycloak layout)
+    oidc_client_ids: list[str] = ["driplytics-web"]
+    oidc_audience: str | None = None
+    oidc_leeway_s: int = 30
+
+    @property
+    def jwks_url(self) -> str:
+        return self.oidc_jwks_url or f"{self.oidc_issuer.rstrip('/')}/protocol/openid-connect/certs"
 
 
 @lru_cache

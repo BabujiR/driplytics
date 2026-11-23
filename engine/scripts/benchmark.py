@@ -6,6 +6,7 @@
 Writes a synthetic long-format CSV (local time, so DST is included when the range
 crosses it), runs import_large_file(), and extrapolates to the full-year target.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -18,27 +19,37 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from plant_ingest import TagMapping, import_large_file  # noqa: E402
+from driplytics_engine import TagMapping, import_large_file
 
 TARGET_VALUES = 365 * 8640 * 100
 
 
 def make_inputs(work: Path, days: int, tags: int, start: str) -> tuple[Path, Path]:
     names = [f"FIT-{i:03d}.PV" for i in range(tags)]
-    pd.DataFrame({"raw_tag": names, "canonical_tag": [f"flow_{i:03d}" for i in range(tags)],
-                  "role": "flow", "source_unit": "gpm", "target_unit": "m3/h"}).to_csv(work / "map.csv", index=False)
+    pd.DataFrame(
+        {
+            "raw_tag": names,
+            "canonical_tag": [f"flow_{i:03d}" for i in range(tags)],
+            "role": "flow",
+            "source_unit": "gpm",
+            "target_unit": "m3/h",
+        }
+    ).to_csv(work / "map.csv", index=False)
     csv = work / "big.csv"
     rng = np.random.default_rng(0)
     with open(csv, "w") as f:
         f.write("timestamp,tag,value,quality\n")
         for d in range(days):  # one day at a time keeps memory flat
-            utc = pd.date_range(pd.Timestamp(start, tz="UTC") + pd.Timedelta(days=d), periods=8640, freq="10s")
+            utc = pd.date_range(
+                pd.Timestamp(start, tz="UTC") + pd.Timedelta(days=d), periods=8640, freq="10s"
+            )
             local = utc.tz_convert("America/New_York").strftime("%Y-%m-%d %H:%M:%S")
             ts = np.repeat(np.asarray(local), tags)
             tg = np.tile(np.asarray(names), len(utc))
             val = np.round(rng.normal(250, 5, len(ts)), 3).astype(str)
             pd.DataFrame({"timestamp": ts, "tag": tg, "value": val, "quality": "Good"}).to_csv(
-                f, header=False, index=False)
+                f, header=False, index=False
+            )
     return csv, work / "map.csv"
 
 
@@ -46,7 +57,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=int, default=3)
     ap.add_argument("--tags", type=int, default=100)
-    ap.add_argument("--start", default="2026-10-31")   # crosses the 2026-11-01 fall-back
+    ap.add_argument("--start", default="2026-10-31")  # crosses the 2026-11-01 fall-back
     ap.add_argument("--chunksize", type=int, default=2_000_000)
     a = ap.parse_args()
 
@@ -63,8 +74,10 @@ def main() -> None:
         print(r.summary())
         print(f"imported {r.total_values:,} values in {el:,.1f} s -> {rate:,.0f} values/s")
         print(f"DST: {r.dst}")
-        print(f"extrapolated full year (100 tags x 10 s = {TARGET_VALUES:,} values): "
-              f"{TARGET_VALUES / rate / 60:,.1f} min (target < 60 min)")
+        print(
+            f"extrapolated full year (100 tags x 10 s = {TARGET_VALUES:,} values): "
+            f"{TARGET_VALUES / rate / 60:,.1f} min (target < 60 min)"
+        )
 
 
 if __name__ == "__main__":

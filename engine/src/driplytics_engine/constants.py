@@ -5,6 +5,7 @@ Reason. Reasons are checked in the order they are declared in REASON_PRIORITY, s
 a row with both a bad timestamp and an unmapped tag is counted once, as
 UNPARSEABLE_TIMESTAMP.
 """
+
 from __future__ import annotations
 
 from enum import StrEnum
@@ -20,11 +21,11 @@ class Reason(StrEnum):
     UNPARSEABLE_TIMESTAMP = "unparseable_timestamp"
     UNMAPPED_TAG = "unmapped_tag"
     EMPTY_VALUE = "empty_value"
-    BAD_QUALITY = "bad_quality"              # quality flag says Bad, or a PI digital state such as "I/O Timeout"
+    BAD_QUALITY = "bad_quality"  # quality flag says Bad, or a PI digital state such as "I/O Timeout"
     NON_NUMERIC_VALUE = "non_numeric_value"
     UNRECOGNIZED_STATE = "unrecognized_state"  # state tag value matches neither state_true nor state_false
     NONEXISTENT_LOCAL_TIME = "nonexistent_local_time"  # inside the spring-forward gap
-    CONFLICTING_DUPLICATE = "conflicting_duplicate"    # same tag + UTC time, different values
+    CONFLICTING_DUPLICATE = "conflicting_duplicate"  # same tag + UTC time, different values
 
 
 # Integer codes used inside vectorized code (0 = no reason / still valid).
@@ -44,7 +45,7 @@ class Role(StrEnum):
     PRESSURE = "pressure"
     LEVEL = "level"
     TEMPERATURE = "temperature"
-    PUMP_STATE = "pump_state"    # canonical value 1.0 = running, 0.0 = stopped
+    PUMP_STATE = "pump_state"  # canonical value 1.0 = running, 0.0 = stopped
     VALVE_STATE = "valve_state"  # canonical value 1.0 = CLOSED, 0.0 = not closed
     OTHER = "other"
 

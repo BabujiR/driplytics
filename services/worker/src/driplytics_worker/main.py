@@ -23,9 +23,9 @@ async def ping(ctx: dict[str, Any], message: str = "ping") -> str:
 
 def engine_version() -> str:
     """Prove the workspace wiring: the worker can import the engine package."""
-    import plant_ingest  # imported lazily so the worker starts fast
+    import driplytics_engine  # imported lazily so the worker starts fast
 
-    return getattr(plant_ingest, "__version__", "installed")
+    return getattr(driplytics_engine, "__version__", "installed")
 
 
 async def startup(ctx: dict[str, Any]) -> None:

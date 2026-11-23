@@ -1,9 +1,12 @@
 """Command line.
 
-    python -m plant_ingest import  EXPORT.csv --mapping tags.csv [--tz America/New_York] [--out out/] [--large]
-    python -m plant_ingest leakby  HIST.csv CLAMP.csv --mapping tags.csv --valve fv101_closed --pump pump_201_running
-                                   --cutoff 1.0 [--clock-offset 45] [--clampon-layout layout.json]
+python -m driplytics_engine import EXPORT.csv --mapping tags.csv \\
+    [--tz America/New_York] [--out out/] [--large]
+python -m driplytics_engine leakby HIST.csv CLAMP.csv --mapping tags.csv \\
+    --valve fv101_closed --pump pump_201_running \\
+    --cutoff 1.0 [--clock-offset 45] [--clampon-layout layout.json]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -18,7 +21,7 @@ from .readers import ExportLayout
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(prog="plant_ingest")
+    p = argparse.ArgumentParser(prog="driplytics_engine")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     i = sub.add_parser("import", help="import a historian export")
@@ -42,7 +45,9 @@ def main(argv: list[str] | None = None) -> int:
     lb.add_argument("--unit", default="gpm")
     lb.add_argument("--min-sq", type=float, default=60)
     lb.add_argument("--clock-offset", type=float, default=0.0)
-    lb.add_argument("--clampon-layout", help="JSON file with ClampOnLayout fields (column names, skiprows, ...)")
+    lb.add_argument(
+        "--clampon-layout", help="JSON file with ClampOnLayout fields (column names, skiprows, ...)"
+    )
     lb.add_argument("--channel", choices=["downstream", "upstream"], default="downstream")
 
     a = p.parse_args(argv)
@@ -52,7 +57,9 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "import":
         out = Path(a.out)
         out.mkdir(parents=True, exist_ok=True)
-        lay = ExportLayout(format=a.format, timestamp_format=a.timestamp_format, quality_suffix=a.quality_suffix)
+        lay = ExportLayout(
+            format=a.format, timestamp_format=a.timestamp_format, quality_suffix=a.quality_suffix
+        )
         if a.large:
             res = import_large_file(a.export, mapping, out, lay, cfg)
         else:
@@ -67,11 +74,24 @@ def main(argv: list[str] | None = None) -> int:
 
     hist = import_historian_export(a.historian, mapping, config=cfg)
     lay = json.loads(Path(a.clampon_layout).read_text()) if a.clampon_layout else {}
-    clamp = load_clampon_export(a.clampon, ClampOnLayout(**{"timezone": a.tz, "flow_unit": a.unit, **lay}),
-                                clock_offset_s=a.clock_offset)
-    r = run_leak_by_check(clamp, hist.values, LeakByConfig(
-        valve_state_tag=a.valve, pump_state_tag=a.pump, low_flow_cutoff=a.cutoff, flow_unit=a.unit,
-        min_signal_quality=a.min_sq, flow_channel=a.channel), hist.report)
+    clamp = load_clampon_export(
+        a.clampon,
+        ClampOnLayout(**{"timezone": a.tz, "flow_unit": a.unit, **lay}),
+        clock_offset_s=a.clock_offset,
+    )
+    r = run_leak_by_check(
+        clamp,
+        hist.values,
+        LeakByConfig(
+            valve_state_tag=a.valve,
+            pump_state_tag=a.pump,
+            low_flow_cutoff=a.cutoff,
+            flow_unit=a.unit,
+            min_signal_quality=a.min_sq,
+            flow_channel=a.channel,
+        ),
+        hist.report,
+    )
     print(json.dumps({"status": r.status, "reasons": r.reasons, "summary": r.summary}, indent=2, default=str))
     return 0
 

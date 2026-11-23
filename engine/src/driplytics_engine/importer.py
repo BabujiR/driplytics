@@ -19,46 +19,55 @@ Two entry points share the exact same stage functions:
     import_large_file()        chunked + spill-to-disk per tag -> per-tag output files
                                (1 year x 100 tags x 10 s = 315M values)
 """
+
 from __future__ import annotations
 
+import logging
 import shutil
 import tempfile
 import time
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 import pandas as pd
 
+from . import storage
 from .constants import CODE_REASON, REASON_CODE, Outcome, Quality, Reason
 from .mapping import TagMapping
 from .quality import is_digital_state, normalize_quality
-from .readers import ExportLayout, RawChunk, iter_raw_chunks, read_raw
+from .readers import ExportLayout, RawChunk, estimate_input_rows, iter_raw_chunks, read_raw
 from .report import ImportReport
+from .storage import PathLike, StorageOptions
 from .timeconv import LocalizeStats, localize_to_utc, parse_timestamps
 from .totalizer import totalizer_to_rate
 from .units import convert
+
+log = logging.getLogger(__name__)
 
 VALUE_COLUMNS = ["timestamp_utc", "tag", "raw_tag", "value", "unit", "quality", "role", "derived"]
 
 
 @dataclass
 class ImportConfig:
-    timezone: str = "America/New_York"          # zone of naive timestamps in the export
-    blank_quality: Quality = Quality.GOOD       # quality assumed when the flag is blank/absent
-    max_examples_per_reason: int = 20           # rejected rows copied into the report
-    keep_ledger: bool = True                    # per-value outcome table (in-memory path only)
+    timezone: str = "America/New_York"  # zone of naive timestamps in the export
+    blank_quality: Quality = Quality.GOOD  # quality assumed when the flag is blank/absent
+    max_examples_per_reason: int = 20  # rejected rows copied into the report
+    keep_ledger: bool = True  # per-value outcome table (in-memory path only)
 
 
 @dataclass
 class ImportResult:
-    values: pd.DataFrame | None                 # clean long DataFrame (in-memory path)
+    values: pd.DataFrame | None  # clean long DataFrame (in-memory path)
     report: ImportReport
-    ledger: pd.DataFrame | None = None          # seq, raw_tag, outcome, reason for every input value
+    ledger: pd.DataFrame | None = None  # seq, raw_tag, outcome, reason for every input value
 
 
 # --------------------------------------------------------------------------- helpers
+
 
 def _per_category(cat: pd.Series, fn, default) -> np.ndarray:
     """Evaluate fn once per distinct tag and broadcast via category codes (fast on huge frames)."""
@@ -69,15 +78,26 @@ def _per_category(cat: pd.Series, fn, default) -> np.ndarray:
 
 
 def _empty_values() -> pd.DataFrame:
-    return pd.DataFrame({c: pd.Series(dtype="float64" if c == "value" else
-                                      "bool" if c == "derived" else
-                                      "datetime64[us, UTC]" if c == "timestamp_utc" else "string")
-                         for c in VALUE_COLUMNS})
+    return pd.DataFrame(
+        {
+            c: pd.Series(
+                dtype="float64"
+                if c == "value"
+                else "bool"
+                if c == "derived"
+                else "datetime64[us, UTC]"
+                if c == "timestamp_utc"
+                else "string"
+            )
+            for c in VALUE_COLUMNS
+        }
+    )
 
 
 @dataclass
 class _Tally:
     """Running counts across chunks/tags; becomes the ImportReport."""
+
     cfg: ImportConfig
     total: int = 0
     by_code: Counter = field(default_factory=Counter)
@@ -101,8 +121,14 @@ class _Tally:
                 continue
             sel = rows.iloc[np.flatnonzero(codes == c)[: k - len(have)]]
             for r in sel.itertuples(index=False):
-                have.append({"seq": int(r.seq), "raw_tag": str(r.raw_tag),
-                             "timestamp": str(getattr(r, ts_col)), "value": str(r.value)})
+                have.append(
+                    {
+                        "seq": int(r.seq),
+                        "raw_tag": str(r.raw_tag),
+                        "timestamp": str(getattr(r, ts_col)),
+                        "value": str(r.value),
+                    }
+                )
 
     def report(self, source: str, fmt: str, elapsed: float, output_path: str | None) -> ImportReport:
         rejected_by = {r.value: int(self.by_code.get(REASON_CODE[r], 0)) for r in Reason}
@@ -112,17 +138,28 @@ class _Tally:
         if self.accepted == 0:
             blocked.append("no accepted values")
         return ImportReport(
-            source=source, format=fmt, timezone=self.cfg.timezone, total_values=self.total,
-            accepted=self.accepted, rejected=sum(rejected_by.values()), duplicates=self.duplicates,
-            rejected_by_reason=rejected_by, accepted_uncertain=self.accepted_uncertain,
-            unmapped_tags=dict(self.unmapped), scoring_allowed=not blocked,
+            source=source,
+            format=fmt,
+            timezone=self.cfg.timezone,
+            total_values=self.total,
+            accepted=self.accepted,
+            rejected=sum(rejected_by.values()),
+            duplicates=self.duplicates,
+            rejected_by_reason=rejected_by,
+            accepted_uncertain=self.accepted_uncertain,
+            unmapped_tags=dict(self.unmapped),
+            scoring_allowed=not blocked,
             scoring_blocked_reasons=blocked,
-            dst={"ambiguous_first_pass": self.dst.ambiguous_first_pass,
-                 "ambiguous_second_pass": self.dst.ambiguous_second_pass,
-                 "nonexistent_local_time": self.dst.nonexistent},
-            totalizer_events=self.tot_events, totalizer_gaps=self.tot_gaps,
+            dst={
+                "ambiguous_first_pass": self.dst.ambiguous_first_pass,
+                "ambiguous_second_pass": self.dst.ambiguous_second_pass,
+                "nonexistent_local_time": self.dst.nonexistent,
+            },
+            totalizer_events=self.tot_events,
+            totalizer_gaps=self.tot_gaps,
             tags=sorted(self.tags.values(), key=lambda d: d["tag"]),
-            blank_cells_ignored=self.blank_ignored, rejected_examples=self.examples,
+            blank_cells_ignored=self.blank_ignored,
+            rejected_examples=self.examples,
             elapsed_s=round(elapsed, 3),
             values_per_second=round(self.total / elapsed, 1) if elapsed > 0 else 0.0,
             output_path=output_path,
@@ -131,8 +168,8 @@ class _Tally:
 
 # --------------------------------------------------------------------------- stage A
 
-def _stage_a(raw: pd.DataFrame, mapping: TagMapping, layout: ExportLayout, cfg: ImportConfig
-             ) -> pd.DataFrame:
+
+def _stage_a(raw: pd.DataFrame, mapping: TagMapping, layout: ExportLayout, cfg: ImportConfig) -> pd.DataFrame:
     """Row-local validation. Returns seq, raw_tag, local, value, quality, code (0 = still valid)."""
     n = len(raw)
     code = np.zeros(n, np.int8)
@@ -178,8 +215,7 @@ def _stage_a(raw: pd.DataFrame, mapping: TagMapping, layout: ExportLayout, cfg: 
         nv = num[sidx]
         isint = np.isfinite(nv) & (nv == np.round(nv))
         as_int = np.where(isint, nv, 0).astype("int64").astype(str)
-        lowered = (text.iloc[sidx].str.lower().to_numpy(dtype=object) if text is not None
-                   else nv.astype(str))
+        lowered = text.iloc[sidx].str.lower().to_numpy(dtype=object) if text is not None else nv.astype(str)
         norm = np.where(isint, as_int, lowered)
         stags = tags.iloc[sidx].astype(str).to_numpy()
         lut = {}
@@ -187,21 +223,28 @@ def _stage_a(raw: pd.DataFrame, mapping: TagMapping, layout: ExportLayout, cfg: 
             spec = mapping[t]
             lut[(t, spec.state_true)] = 1.0
             lut[(t, spec.state_false)] = 0.0
-        sval = np.array([lut.get(k, np.nan) for k in zip(stags, norm)], dtype="float64")
+        sval = np.array([lut.get(k, np.nan) for k in zip(stags, norm, strict=True)], dtype="float64")
         bad = np.isnan(sval)
         code[sidx[bad]] = REASON_CODE[Reason.UNRECOGNIZED_STATE]
         num = num.copy()
         num[sidx] = sval
 
-    return pd.DataFrame({"seq": raw["seq"].to_numpy(), "raw_tag": tags.to_numpy(),
-                         "local": local.to_numpy() if not isinstance(local.dtype, pd.DatetimeTZDtype)
-                         else local, "value": num, "quality": quality.to_numpy(), "code": code})
+    return pd.DataFrame(
+        {
+            "seq": raw["seq"].to_numpy(),
+            "raw_tag": tags.to_numpy(),
+            "local": local.to_numpy() if not isinstance(local.dtype, pd.DatetimeTZDtype) else local,
+            "value": num,
+            "quality": quality.to_numpy(),
+            "code": code,
+        }
+    )
 
 
 def _tally_stage_a(t: _Tally, a: pd.DataFrame, raw: pd.DataFrame) -> None:
     codes = a["code"].to_numpy()
     t.total += len(a)
-    t.by_code.update(dict(zip(*np.unique(codes[codes > 0], return_counts=True))))
+    t.by_code.update(dict(zip(*np.unique(codes[codes > 0], return_counts=True), strict=True)))
     um = codes == REASON_CODE[Reason.UNMAPPED_TAG]
     if um.any():
         t.unmapped.update(pd.Series(a["raw_tag"].to_numpy()[um]).astype(str).value_counts().to_dict())
@@ -211,8 +254,10 @@ def _tally_stage_a(t: _Tally, a: pd.DataFrame, raw: pd.DataFrame) -> None:
 
 # --------------------------------------------------------------------------- stage B
 
-def _stage_b(valid: pd.DataFrame, mapping: TagMapping, cfg: ImportConfig, t: _Tally
-             ) -> tuple[np.ndarray, np.ndarray, pd.DataFrame]:
+
+def _stage_b(
+    valid: pd.DataFrame, mapping: TagMapping, cfg: ImportConfig, t: _Tally
+) -> tuple[np.ndarray, np.ndarray, pd.DataFrame]:
     """valid: stage-A-valid rows sorted by seq. Returns (code, is_duplicate, values)."""
     valid = valid.reset_index(drop=True)
     n = len(valid)
@@ -226,8 +271,14 @@ def _stage_b(valid: pd.DataFrame, mapping: TagMapping, cfg: ImportConfig, t: _Ta
 
     is_dup = np.zeros(n, bool)
     ok = np.flatnonzero(code == 0)
-    key = pd.DataFrame({"tag": valid["raw_tag"].to_numpy()[ok], "ts": utc.to_numpy()[ok],
-                        "value": valid["value"].to_numpy()[ok]}, index=ok)
+    key = pd.DataFrame(
+        {
+            "tag": valid["raw_tag"].to_numpy()[ok],
+            "ts": utc.to_numpy()[ok],
+            "value": valid["value"].to_numpy()[ok],
+        },
+        index=ok,
+    )
     dup_any = key.duplicated(["tag", "ts"], keep=False)
     if dup_any.any():
         d = key[dup_any]
@@ -237,7 +288,7 @@ def _stage_b(valid: pd.DataFrame, mapping: TagMapping, cfg: ImportConfig, t: _Ta
         same = d[(nuniq == 1).to_numpy()]
         is_dup[same.index[same.duplicated(["tag", "ts"], keep="first").to_numpy()]] = True
 
-    t.by_code.update(dict(zip(*np.unique(code[code > 0], return_counts=True))))
+    t.by_code.update(dict(zip(*np.unique(code[code > 0], return_counts=True), strict=True)))
     t.duplicates += int(is_dup.sum())
     if (code > 0).any():
         t.add_examples(code, valid.assign(local=local), "local")
@@ -253,34 +304,56 @@ def _stage_b(valid: pd.DataFrame, mapping: TagMapping, cfg: ImportConfig, t: _Ta
         spec = mapping[raw_tag]
         g = g.sort_values("timestamp_utc", kind="stable")
         if spec.is_totalizer:
-            rates, ev, gaps = totalizer_to_rate(g["timestamp_utc"], g["value"].to_numpy(),
-                                                g["quality"], spec)
+            rates, ev, gaps = totalizer_to_rate(g["timestamp_utc"], g["value"].to_numpy(), g["quality"], spec)
             t.tot_events.extend(ev)
             t.tot_gaps += gaps
-            ts, vals, q, unit, derived = (rates["timestamp_utc"], rates["value"].to_numpy(),
-                                          rates["quality"], spec.target_unit, True)
+            ts, vals, q, unit, derived = (
+                rates["timestamp_utc"],
+                rates["value"].to_numpy(),
+                rates["quality"],
+                spec.target_unit,
+                True,
+            )
         elif spec.role.is_state:
             ts, vals, q, unit, derived = g["timestamp_utc"], g["value"].to_numpy(), g["quality"], "", False
         else:
             ts, q, derived = g["timestamp_utc"], g["quality"], False
             vals = convert(g["value"].to_numpy(), spec.source_unit, spec.target_unit)
             unit = spec.target_unit or spec.source_unit
-        part = pd.DataFrame({"timestamp_utc": pd.Series(ts.to_numpy()).dt.tz_convert("UTC")
-                             if len(ts) else pd.Series([], dtype="datetime64[us, UTC]"),
-                             "tag": spec.canonical_tag, "raw_tag": raw_tag, "value": vals,
-                             "unit": unit, "quality": pd.Series(q).astype("string").to_numpy(),
-                             "role": spec.role.value, "derived": derived})
+        part = pd.DataFrame(
+            {
+                "timestamp_utc": pd.Series(ts.to_numpy()).dt.tz_convert("UTC")
+                if len(ts)
+                else pd.Series([], dtype="datetime64[us, UTC]"),
+                "tag": spec.canonical_tag,
+                "raw_tag": raw_tag,
+                "value": vals,
+                "unit": unit,
+                "quality": pd.Series(q).astype("string").to_numpy(),
+                "role": spec.role.value,
+                "derived": derived,
+            }
+        )
         parts.append(part)
-        prev = t.tags.get(spec.canonical_tag, {"tag": spec.canonical_tag, "raw_tag": raw_tag,
-                                               "role": spec.role.value, "unit": unit,
-                                               "accepted_inputs": 0, "output_rows": 0,
-                                               "first_utc": None, "last_utc": None})
+        prev = t.tags.get(
+            spec.canonical_tag,
+            {
+                "tag": spec.canonical_tag,
+                "raw_tag": raw_tag,
+                "role": spec.role.value,
+                "unit": unit,
+                "accepted_inputs": 0,
+                "output_rows": 0,
+                "first_utc": None,
+                "last_utc": None,
+            },
+        )
         prev["accepted_inputs"] += len(g)
         prev["output_rows"] += len(part)
         if len(g):
-            f, l = g["timestamp_utc"].iloc[0].isoformat(), g["timestamp_utc"].iloc[-1].isoformat()
-            prev["first_utc"] = min(filter(None, [prev["first_utc"], f]))
-            prev["last_utc"] = max(filter(None, [prev["last_utc"], l]))
+            first, last = g["timestamp_utc"].iloc[0].isoformat(), g["timestamp_utc"].iloc[-1].isoformat()
+            prev["first_utc"] = min(filter(None, [prev["first_utc"], first]))
+            prev["last_utc"] = max(filter(None, [prev["last_utc"], last]))
         t.tags[spec.canonical_tag] = prev
 
     values = pd.concat(parts, ignore_index=True) if parts else _empty_values()
@@ -298,8 +371,14 @@ def _finalize_values(values: pd.DataFrame) -> pd.DataFrame:
 
 # --------------------------------------------------------------------------- public API
 
-def import_frames(raw: RawChunk, mapping: TagMapping, layout: ExportLayout | None = None,
-                  config: ImportConfig | None = None, source: str = "<memory>") -> ImportResult:
+
+def import_frames(
+    raw: RawChunk,
+    mapping: TagMapping,
+    layout: ExportLayout | None = None,
+    config: ImportConfig | None = None,
+    source: str = "<memory>",
+) -> ImportResult:
     """Core in-memory import of an already-read RawChunk."""
     layout, cfg = layout or ExportLayout(), config or ImportConfig()
     t0 = time.perf_counter()
@@ -318,41 +397,113 @@ def import_frames(raw: RawChunk, mapping: TagMapping, layout: ExportLayout | Non
         vidx = np.flatnonzero(valid_mask)
         codes[vidx] = code_b
         dup[vidx] = dup_b
-        outcome = np.where(codes > 0, Outcome.REJECTED.value,
-                           np.where(dup, Outcome.DUPLICATE.value, Outcome.ACCEPTED.value))
+        outcome = np.where(
+            codes > 0, Outcome.REJECTED.value, np.where(dup, Outcome.DUPLICATE.value, Outcome.ACCEPTED.value)
+        )
         reason_lut = np.array([""] + [CODE_REASON[i].value for i in range(1, len(Reason) + 1)], dtype=object)
-        ledger = pd.DataFrame({"seq": a["seq"].to_numpy(), "raw_tag": a["raw_tag"].astype(str).to_numpy(),
-                               "outcome": outcome, "reason": reason_lut[codes]})
+        ledger = pd.DataFrame(
+            {
+                "seq": a["seq"].to_numpy(),
+                "raw_tag": a["raw_tag"].astype(str).to_numpy(),
+                "outcome": outcome,
+                "reason": reason_lut[codes],
+            }
+        )
 
     report = tally.report(source, raw.format, time.perf_counter() - t0, None)
     return ImportResult(_finalize_values(values), report, ledger)
 
 
-def import_historian_export(path: str | Path, mapping: TagMapping | str | Path,
-                            layout: ExportLayout | None = None,
-                            config: ImportConfig | None = None) -> ImportResult:
-    """Import a whole CSV/Parquet export in memory. Returns clean values + report (+ ledger)."""
+def import_historian_export(
+    path: PathLike,
+    mapping: TagMapping | PathLike,
+    layout: ExportLayout | None = None,
+    config: ImportConfig | None = None,
+    storage_options: StorageOptions = None,
+    progress: ProgressCallback | None = None,
+) -> ImportResult:
+    """Import a whole CSV/Parquet export in memory. Returns clean values + report (+ ledger).
+
+    `path` may be a local path or an fsspec URL (s3://, gs://, memory://); see storage.py.
+    """
     if not isinstance(mapping, TagMapping):
         mapping = TagMapping.from_csv(mapping)
     t0 = time.perf_counter()
-    raw = read_raw(path, layout)
+    raw = read_raw(path, layout, storage_options)
+    rows = raw.rows
+    _emit(progress, ImportProgress("reading", rows, rows, 0, None, time.perf_counter() - t0))
+    _emit(progress, ImportProgress("processing", rows, rows, 0, None, time.perf_counter() - t0))
     res = import_frames(raw, mapping, layout, config, source=str(path))
     res.report.elapsed_s = round(time.perf_counter() - t0, 3)
     res.report.values_per_second = round(res.report.total_values / max(res.report.elapsed_s, 1e-9), 1)
+    _emit(
+        progress,
+        ImportProgress(
+            "done", rows, rows, len(res.report.tags), len(res.report.tags), time.perf_counter() - t0
+        ),
+    )
     return res
+
+
+# --- progress -----------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ImportProgress:
+    """A progress update. Rows are INPUT rows (lines of the file), not values.
+
+    stages: "reading" (pass 1, row-local checks), "processing" (pass 2, per tag), "done".
+    rows_total is an estimate while reading a CSV (sampled), exact for Parquet.
+    """
+
+    stage: Literal["reading", "processing", "done"]
+    rows_done: int
+    rows_total: int | None
+    tags_done: int
+    tags_total: int | None
+    elapsed_s: float
+
+    @property
+    def fraction(self) -> float | None:
+        """0.0 to 1.0 for a progress bar: reading counts as 80 %, processing as 20 %."""
+        if self.stage == "done":
+            return 1.0
+        if self.stage == "reading":
+            if not self.rows_total:
+                return None
+            return 0.8 * min(self.rows_done / self.rows_total, 1.0)
+        if not self.tags_total:
+            return 0.8
+        return 0.8 + 0.2 * min(self.tags_done / self.tags_total, 1.0)
+
+
+ProgressCallback = Callable[[ImportProgress], None]
+
+
+def _emit(progress: ProgressCallback | None, event: ImportProgress) -> None:
+    """Report progress. A failing callback (e.g. a lost DB connection) never breaks an import."""
+    if progress is None:
+        return
+    try:
+        progress(event)
+    except Exception:
+        log.warning("import progress callback failed", exc_info=True)
 
 
 # --- large files ------------------------------------------------------------
 
+
 def _has_pyarrow() -> bool:
     try:
         import pyarrow  # noqa: F401
+
         return True
     except ImportError:
         return False
 
 
 def _write_part(df: pd.DataFrame, stem: Path) -> Path:
+    """Local spill file (always on local disk, never object storage)."""
     if _has_pyarrow():
         p = stem.with_suffix(".parquet")
         df.to_parquet(p, index=False)
@@ -363,32 +514,67 @@ def _write_part(df: pd.DataFrame, stem: Path) -> Path:
 
 
 def _read_part(p: Path) -> pd.DataFrame:
-    return pd.read_parquet(p) if p.suffix == ".parquet" else pd.read_pickle(p)
+    return pd.read_parquet(p) if p.suffix == ".parquet" else pd.read_pickle(p)  # noqa: S301 - own spill files
 
 
-def import_large_file(path: str | Path, mapping: TagMapping | str | Path, out_dir: str | Path,
-                      layout: ExportLayout | None = None, config: ImportConfig | None = None,
-                      chunksize: int = 2_000_000) -> ImportResult:
+def _write_output(df: pd.DataFrame, stem: PathLike, storage_options: StorageOptions) -> str:
+    """Final per-tag output, local or object storage. Parquet needs pyarrow; local-only pickle fallback."""
+    if _has_pyarrow():
+        dest = f"{stem}.parquet"
+        df.to_parquet(
+            storage.pandas_path(dest),
+            index=False,
+            storage_options=storage.pandas_storage_options(dest, storage_options),
+        )
+        return dest
+    if storage.is_url(stem):
+        raise ImportError("Writing to object storage requires pyarrow (pip install pyarrow)")
+    dest = f"{stem}.pkl"
+    df.to_pickle(dest)
+    return dest
+
+
+def import_large_file(
+    path: PathLike,
+    mapping: TagMapping | PathLike,
+    out_dir: PathLike,
+    layout: ExportLayout | None = None,
+    config: ImportConfig | None = None,
+    chunksize: int = 2_000_000,
+    storage_options: StorageOptions = None,
+    progress: ProgressCallback | None = None,
+    spill_dir: PathLike | None = None,
+) -> ImportResult:
     """Chunked import for exports too big for memory.
 
     Pass 1: read `chunksize` rows at a time, run stage A, count rejects, spill the
-            still-valid rows to one folder per tag.
+            still-valid rows to one local folder per tag.
     Pass 2: for each tag, load its rows (one tag-year = 3.15M rows at 10 s, small),
             run stage B, write <out_dir>/values/<canonical_tag>.parquet.
     Memory is bounded by max(chunk, one tag's rows), not by file size.
+
+    `path` and `out_dir` may be local paths or fsspec URLs (the same `storage_options`
+    apply to both). Spill files always go to local disk: `spill_dir`, else `out_dir`
+    when it is local, else the system temp folder.
     """
     if not isinstance(mapping, TagMapping):
         mapping = TagMapping.from_csv(mapping)
     layout, cfg = layout or ExportLayout(), config or ImportConfig()
-    out_dir = Path(out_dir)
-    (out_dir / "values").mkdir(parents=True, exist_ok=True)
-    spill = Path(tempfile.mkdtemp(prefix="spill_", dir=out_dir))
+    values_dir = storage.join(out_dir, "values")
+    storage.makedirs(values_dir, storage_options)
+    spill_parent = spill_dir or (None if storage.is_url(out_dir) else out_dir)
+    if spill_parent is not None:
+        Path(spill_parent).mkdir(parents=True, exist_ok=True)
+    spill = Path(tempfile.mkdtemp(prefix="spill_", dir=spill_parent))
     t0 = time.perf_counter()
     tally = _Tally(cfg)
     fmt = "long"
     tag_ids = {t: i for i, t in enumerate(mapping.raw_tags)}
+    rows_total = estimate_input_rows(path, layout, storage_options)
+    rows_done = 0
     try:
-        for ci, chunk in enumerate(iter_raw_chunks(path, layout, chunksize)):
+        _emit(progress, ImportProgress("reading", 0, rows_total, 0, None, 0.0))
+        for ci, chunk in enumerate(iter_raw_chunks(path, layout, chunksize, storage_options)):
             fmt = chunk.format
             tally.blank_ignored += chunk.blank_cells_ignored
             a = _stage_a(chunk.frame, mapping, layout, cfg)
@@ -398,17 +584,46 @@ def import_large_file(path: str | Path, mapping: TagMapping | str | Path, out_di
                 d = spill / f"tag_{tag_ids[str(raw_tag)]:05d}"
                 d.mkdir(exist_ok=True)
                 _write_part(g.assign(raw_tag=g["raw_tag"].astype(str)), d / f"part_{ci:06d}")
+            rows_done += chunk.rows
+            _emit(
+                progress,
+                ImportProgress(
+                    "reading",
+                    rows_done,
+                    max(rows_total or 0, rows_done) or None,
+                    0,
+                    None,
+                    time.perf_counter() - t0,
+                ),
+            )
 
-        for d in sorted(spill.iterdir()):
+        tag_dirs = sorted(spill.iterdir())
+        _emit(
+            progress,
+            ImportProgress("processing", rows_done, rows_done, 0, len(tag_dirs), time.perf_counter() - t0),
+        )
+        for i, d in enumerate(tag_dirs, start=1):
             g = pd.concat([_read_part(p) for p in sorted(d.iterdir())], ignore_index=True)
             g = g.sort_values("seq", kind="stable", ignore_index=True)
             _, _, values = _stage_b(g, mapping, cfg, tally)
             if len(values):
                 canon = str(values["tag"].iloc[0])
-                _write_part(_finalize_values(values), out_dir / "values" / canon)
+                _write_output(_finalize_values(values), storage.join(values_dir, canon), storage_options)
+            _emit(
+                progress,
+                ImportProgress(
+                    "processing", rows_done, rows_done, i, len(tag_dirs), time.perf_counter() - t0
+                ),
+            )
     finally:
         shutil.rmtree(spill, ignore_errors=True)
 
-    report = tally.report(str(path), fmt, time.perf_counter() - t0, str(out_dir / "values"))
-    report.to_json(out_dir / "import_report.json")
+    report = tally.report(str(path), fmt, time.perf_counter() - t0, str(values_dir))
+    storage.write_text(storage.join(out_dir, "import_report.json"), report.to_json(), storage_options)
+    _emit(
+        progress,
+        ImportProgress(
+            "done", rows_done, rows_done, len(report.tags), len(report.tags), time.perf_counter() - t0
+        ),
+    )
     return ImportResult(None, report, None)

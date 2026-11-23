@@ -1,4 +1,4 @@
-# plant-ingest: historian importer and valve leak-by check
+# Driplytics engine: historian importer and valve leak-by check
 
 This package has two Python modules that work only from data the plant already records:
 
@@ -8,7 +8,7 @@ This package has two Python modules that work only from data the plant already r
 All data in this repo is synthetic.
 
 ```
-src/plant_ingest/
+src/driplytics_engine/
   constants.py   Outcome / Reason / Quality / Role enums (reason priority = declaration order)
   mapping.py     tag-mapping file loader + validation
   readers.py     long / wide, CSV / Parquet -> one raw long shape; chunked iteration
@@ -31,26 +31,27 @@ scripts/benchmark.py   1-year x 100-tag throughput check
 pip install -e ".[test]"
 python tests/fixtures/generate.py          # (re)build synthetic fixtures
 pytest -q
-python -m plant_ingest import tests/fixtures/data/historian_long.csv \
+python -m driplytics_engine import tests/fixtures/data/historian_long.csv \
        --mapping tests/fixtures/data/tag_mapping.csv --out out/
-python -m plant_ingest leakby tests/fixtures/data/leakby_historian.csv tests/fixtures/data/clampon_export.csv \
+python -m driplytics_engine leakby tests/fixtures/data/leakby_historian.csv tests/fixtures/data/clampon_export.csv \
        --mapping tests/fixtures/data/tag_mapping.csv --valve fv101_closed --pump pump_201_running \
        --cutoff 1.0 --clock-offset 45 --clampon-layout tests/fixtures/data/clampon_layout.json
-docker build -t plant-ingest . && docker run --rm plant-ingest      # runs the tests
+docker build -t driplytics-engine . && docker run --rm driplytics-engine      # runs the tests
 ```
 
 Python API:
 
 ```python
-from plant_ingest import import_historian_export, ExportLayout, TagMapping
-from plant_ingest.clampon import load_clampon_export, ClampOnLayout
-from plant_ingest.leakby import run_leak_by_check, LeakByConfig
+from driplytics_engine import import_historian_export, ExportLayout, TagMapping
+from driplytics_engine.clampon import load_clampon_export, ClampOnLayout
+from driplytics_engine.leakby import run_leak_by_check, LeakByConfig
 
-hist = import_historian_export("export.csv", "tag_mapping.csv")         # -> .values, .report, .ledger
+hist = import_historian_export("export.csv", "tag_mapping.csv")  # -> .values, .report, .ledger
 print(hist.report.summary())
 clamp = load_clampon_export("meter.csv", ClampOnLayout(skiprows=3), clock_offset_s=45)
-result = run_leak_by_check(clamp, hist.values,
-                           LeakByConfig(valve_state_tag="fv101_closed", low_flow_cutoff=1.0), hist.report)
+result = run_leak_by_check(
+    clamp, hist.values, LeakByConfig(valve_state_tag="fv101_closed", low_flow_cutoff=1.0), hist.report
+)
 result.status, result.reasons, result.events
 ```
 

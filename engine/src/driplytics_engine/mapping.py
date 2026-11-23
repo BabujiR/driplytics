@@ -14,6 +14,7 @@ CSV columns (header required, extra columns ignored):
     state_false    raw value meaning "not closed" / "stopped", e.g. 0 / OPEN / STOPPED
     low_flow_cutoff  optional, in target_unit (used by the leak-by check)
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -76,18 +77,22 @@ class TagMapping:
         return list(self.specs)
 
     @classmethod
-    def from_csv(cls, path: str | Path) -> "TagMapping":
+    def from_csv(cls, path: str | Path) -> TagMapping:
         return cls.from_frame(pd.read_csv(path, dtype=str, keep_default_na=False))
 
     @classmethod
-    def from_frame(cls, df: pd.DataFrame) -> "TagMapping":
+    def from_frame(cls, df: pd.DataFrame) -> TagMapping:
         df = df.rename(columns=lambda c: str(c).strip().lower())
         for col in ("raw_tag", "canonical_tag"):
             if col not in df.columns:
                 raise MappingError(f"tag mapping is missing required column '{col}'")
         specs, errors = [], []
         for i, r in df.iterrows():
-            g = lambda k, d="": str(r.get(k, d) if r.get(k, d) is not None else d).strip()  # noqa: E731
+
+            def g(k: str, d: str = "", r: pd.Series = r) -> str:
+                v = r.get(k, d)
+                return str(v if v is not None else d).strip()
+
             line = i + 2  # header is line 1
             raw, canon = g("raw_tag"), g("canonical_tag")
             if not raw or not canon:
@@ -114,16 +119,26 @@ class TagMapping:
             if role.is_state and (not st or not sf):
                 errors.append(f"line {line} ({raw}): state tags need state_true and state_false")
                 continue
-            num = lambda k: float(g(k)) if g(k) else None  # noqa: E731
+
+            def num(k: str, g=g) -> float | None:  # type: ignore[no-untyped-def]
+                return float(g(k)) if g(k) else None
+
             try:
-                specs.append(TagSpec(
-                    raw_tag=raw, canonical_tag=canon, role=role,
-                    source_unit=normalize_unit(src), target_unit=normalize_unit(dst),
-                    is_totalizer=tot, rollover_max=num("rollover_max"),
-                    max_gap_s=num("max_gap_s") or 300.0,
-                    state_true=_norm_state(st) if st else "", state_false=_norm_state(sf) if sf else "",
-                    low_flow_cutoff=num("low_flow_cutoff"),
-                ))
+                specs.append(
+                    TagSpec(
+                        raw_tag=raw,
+                        canonical_tag=canon,
+                        role=role,
+                        source_unit=normalize_unit(src),
+                        target_unit=normalize_unit(dst),
+                        is_totalizer=tot,
+                        rollover_max=num("rollover_max"),
+                        max_gap_s=num("max_gap_s") or 300.0,
+                        state_true=_norm_state(st) if st else "",
+                        state_false=_norm_state(sf) if sf else "",
+                        low_flow_cutoff=num("low_flow_cutoff"),
+                    )
+                )
             except ValueError as e:
                 errors.append(f"line {line} ({raw}): bad number ({e})")
         if errors:

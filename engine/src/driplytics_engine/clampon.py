@@ -14,6 +14,7 @@ Alignment to historian time:
    point; per grid point: flow = median (robust to spikes),
    signal quality = minimum (a point is only as trustworthy as its worst sample).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -44,7 +45,7 @@ class ClampOnLayout:
 
 @dataclass
 class ClampOnImport:
-    data: pd.DataFrame          # index timestamp_utc (grid); up_flow, up_sq, down_flow, down_sq, n_samples
+    data: pd.DataFrame  # index timestamp_utc (grid); up_flow, up_sq, down_flow, down_sq, n_samples
     unit: str
     report: dict = field(default_factory=dict)
 
@@ -56,15 +57,27 @@ def _num(s: pd.Series, decimal: str) -> pd.Series:
     return pd.to_numeric(t, errors="coerce").astype("float64")
 
 
-def load_clampon_export(path: str | Path, layout: ClampOnLayout | None = None,
-                        clock_offset_s: float = 0.0, grid: str = "10s",
-                        target_flow_unit: str | None = None) -> ClampOnImport:
+def load_clampon_export(
+    path: str | Path,
+    layout: ClampOnLayout | None = None,
+    clock_offset_s: float = 0.0,
+    grid: str = "10s",
+    target_flow_unit: str | None = None,
+) -> ClampOnImport:
     lay = layout or ClampOnLayout()
-    df = pd.read_csv(path, dtype=str, keep_default_na=False, sep=lay.sep, skiprows=lay.skiprows,
-                     encoding=lay.encoding, skipinitialspace=True)
+    df = pd.read_csv(
+        path,
+        dtype=str,
+        keep_default_na=False,
+        sep=lay.sep,
+        skiprows=lay.skiprows,
+        encoding=lay.encoding,
+        skipinitialspace=True,
+    )
     df = df.rename(columns=lambda c: str(c).strip())
-    missing = [c for c in (lay.timestamp_col, lay.upstream_flow_col, lay.downstream_flow_col)
-               if c not in df.columns]
+    missing = [
+        c for c in (lay.timestamp_col, lay.upstream_flow_col, lay.downstream_flow_col) if c not in df.columns
+    ]
     if missing:
         raise ValueError(f"clamp-on export is missing columns {missing} (found {list(df.columns)})")
 
@@ -76,8 +89,10 @@ def load_clampon_export(path: str | Path, layout: ClampOnLayout | None = None,
 
     unit = normalize_unit(target_flow_unit or lay.flow_unit)
     raw = pd.DataFrame({"timestamp_utc": utc})
-    for name, fcol, qcol in (("up", lay.upstream_flow_col, lay.upstream_quality_col),
-                             ("down", lay.downstream_flow_col, lay.downstream_quality_col)):
+    for name, fcol, qcol in (
+        ("up", lay.upstream_flow_col, lay.upstream_quality_col),
+        ("down", lay.downstream_flow_col, lay.downstream_quality_col),
+    ):
         raw[f"{name}_flow"] = convert(_num(df[fcol], lay.decimal), lay.flow_unit, unit)
         raw[f"{name}_sq"] = _num(df[qcol], lay.decimal) if qcol in df.columns else np.nan
 
@@ -90,17 +105,28 @@ def load_clampon_export(path: str | Path, layout: ClampOnLayout | None = None,
     # (Series.dt.round rounds ties to even, which makes alternate buckets 9 and 11 samples wide.)
     use["timestamp_utc"] = (use["timestamp_utc"] + pd.Timedelta(grid) / 2).dt.floor(grid)
     g = use.groupby("timestamp_utc", sort=True)
-    data = pd.DataFrame({
-        "up_flow": g["up_flow"].median(), "up_sq": g["up_sq"].min(),
-        "down_flow": g["down_flow"].median(), "down_sq": g["down_sq"].min(),
-        "n_samples": g.size(),
-    })
+    data = pd.DataFrame(
+        {
+            "up_flow": g["up_flow"].median(),
+            "up_sq": g["up_sq"].min(),
+            "down_flow": g["down_flow"].median(),
+            "down_sq": g["down_sq"].min(),
+            "n_samples": g.size(),
+        }
+    )
     report = {
-        "source": str(path), "rows": rows, "rows_used": int(len(use)),
-        "rejected": {"unparseable_timestamp": int(unparseable.sum()),
-                     "nonexistent_local_time": int((nonexistent & ~unparseable).sum()),
-                     "duplicate_timestamp": int(dup_ts.sum())},
-        "non_numeric_cells": nonnum, "clock_offset_s": clock_offset_s, "grid": grid, "unit": unit,
+        "source": str(path),
+        "rows": rows,
+        "rows_used": len(use),
+        "rejected": {
+            "unparseable_timestamp": int(unparseable.sum()),
+            "nonexistent_local_time": int((nonexistent & ~unparseable).sum()),
+            "duplicate_timestamp": int(dup_ts.sum()),
+        },
+        "non_numeric_cells": nonnum,
+        "clock_offset_s": clock_offset_s,
+        "grid": grid,
+        "unit": unit,
         "first_utc": data.index.min().isoformat() if len(data) else None,
         "last_utc": data.index.max().isoformat() if len(data) else None,
     }

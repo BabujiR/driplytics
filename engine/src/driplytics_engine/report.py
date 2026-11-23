@@ -1,4 +1,5 @@
 """Import report: the audit trail a reviewer reads before trusting any score."""
+
 from __future__ import annotations
 
 import json
@@ -21,13 +22,13 @@ class ImportReport:
     duplicates: int
     rejected_by_reason: dict[str, int]
     accepted_uncertain: int
-    unmapped_tags: dict[str, int]                 # raw tag -> number of values
+    unmapped_tags: dict[str, int]  # raw tag -> number of values
     scoring_allowed: bool
     scoring_blocked_reasons: list[str]
     dst: dict[str, int]
     totalizer_events: list[dict]
     totalizer_gaps: int
-    tags: list[dict]                              # per-tag summary
+    tags: list[dict]  # per-tag summary
     blank_cells_ignored: int = 0
     rejected_examples: dict[str, list[dict]] = field(default_factory=dict)
     elapsed_s: float = 0.0
@@ -41,7 +42,8 @@ class ImportReport:
         if self.accepted + self.rejected + self.duplicates != self.total_values:
             raise UnbalancedLedgerError(
                 f"accepted {self.accepted} + rejected {self.rejected} + duplicates {self.duplicates}"
-                f" != total {self.total_values}")
+                f" != total {self.total_values}"
+            )
         if sum(self.rejected_by_reason.values()) != self.rejected:
             raise UnbalancedLedgerError("rejected_by_reason does not sum to rejected")
 
@@ -65,6 +67,8 @@ class ImportReport:
                 lines.append(f"  rejected {r}: {n:,}")
         if self.unmapped_tags:
             lines.append(f"Unmapped tags: {', '.join(sorted(self.unmapped_tags))}")
-        lines.append("Scoring: " + ("ALLOWED" if self.scoring_allowed
-                                     else "BLOCKED - " + "; ".join(self.scoring_blocked_reasons)))
+        lines.append(
+            "Scoring: "
+            + ("ALLOWED" if self.scoring_allowed else "BLOCKED - " + "; ".join(self.scoring_blocked_reasons))
+        )
         return "\n".join(lines)

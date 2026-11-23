@@ -7,11 +7,11 @@ dependencies = [
   "arq>=0.26",
   "watchfiles>=0.24",  # arq --watch (hot reload in local dev)
   "pydantic-settings>=2.6",
-  "plant-ingest",
+  "driplytics-engine",
 ]
 
 [tool.uv.sources]
-plant-ingest = { workspace = true }
+driplytics-engine = { workspace = true }
 
 [build-system]
 requires = ["hatchling>=1.25"]

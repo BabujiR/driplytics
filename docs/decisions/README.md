@@ -21,3 +21,4 @@ Read these before starting any work. **Where an ADR differs from a default in `C
 | [0015](0015-product-default-worklist-top-10.md) | Worklist shows the top 10 by default | Accepted |
 | [0016](0016-project-setup-and-process.md) | Placeholder brand, driplytics.com, GitHub Actions, CI-gated merges | Accepted |
 | [0017](0017-local-s3-chainguard-minio.md) | Local S3: Chainguard MinIO image; API creates buckets in dev | Accepted |
+| [0018](0018-database-access-psycopg-and-sql-migrations.md) | psycopg at runtime; Alembic with SQL-file migrations; owner vs runtime DB roles | Accepted |
