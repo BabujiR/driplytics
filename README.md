@@ -1,5 +1,7 @@
 # Driplytics
 
+[![CI](https://github.com/BabujiR/driplytics/actions/workflows/ci.yml/badge.svg)](https://github.com/BabujiR/driplytics/actions/workflows/ci.yml)
+
 **In-plant water and energy loss detection from historian data.**
 No new sensors, no data scientist: findings ranked in dollars.
 
@@ -43,6 +45,13 @@ When the stack is healthy (`.\tasks.ps1 ps` shows every service as *healthy*):
 
 All passwords above are **local development defaults only**.
 
+**Run the Phase 0 demo end to end** (stack running): `.\tasks.ps1 demo` signs in as alice, uploads the tag
+mapping, uploads a historian export straight to object storage, runs the import on the worker and prints
+`5,179 = 5,157 accepted + 19 rejected + 3 duplicates`. Pass your own file:
+`uv run python apps/api/scripts/dev_import.py my_export.csv --mapping my_tags.csv`.
+
+**Before pushing:** `.\tasks.ps1 check` runs what CI runs (lint, strict types, portability, all tests).
+
 **Try sign-in end to end** (stack running): `.\tasks.ps1 token` signs in to Keycloak as `alice`, calls
 `GET /api/v1/me`, then `GET /api/v1/tenants/current` for her organization (Riverbend, synthetic).
 Use `uv run python apps/api/scripts/dev_token.py bob --tenant` for the Lakeside user.
@@ -55,9 +64,10 @@ If PowerShell blocks the script: `Set-ExecutionPolicy -Scope CurrentUser RemoteS
 
 ## Project status
 
-**Phase 0 (foundations) in progress.** P0-01 to P0-08 are done: monorepo, workspaces, Docker stack, engine
-housekeeping, database schema with row-level security, isolation tests, and API sign-in with roles.
-Next: P0-09 (audit log), P0-10 to P0-13 (sites, upload, import job, generated API client).
+**Phase 0 (foundations) in progress.** Backend done: P0-01 to P0-12, P0-20, P0-24: workspaces, Docker stack,
+engine, schema with row-level security, isolation tests, sign-in and roles, audit log, sites and export
+profiles, direct-to-storage uploads, the worker import job, CI and the portability check.
+Next: P0-13 (generated API client), then the frontend P0-14 to P0-18.
 
 ## Repository guide
 

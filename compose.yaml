@@ -19,6 +19,8 @@ x-app-env: &app-env
   DRIPLYTICS_RAW_BUCKET: ${STORAGE_RAW_BUCKET:-driplytics-raw}
   DRIPLYTICS_DATA_BUCKET: ${STORAGE_DATA_BUCKET:-driplytics-data}
   DRIPLYTICS_STORAGE_AUTO_CREATE_BUCKETS: "true"   # local dev only (ADR 0017)
+  # Upload URLs are signed for the browser-facing address (the API itself talks to http://minio:9000)
+  DRIPLYTICS_STORAGE_PUBLIC_ENDPOINT_URL: http://localhost:${MINIO_PORT:-9000}
 
 services:
   # ---------------------------------------------------------------- data services

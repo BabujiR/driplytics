@@ -554,15 +554,16 @@ def import_large_file(
     Memory is bounded by max(chunk, one tag's rows), not by file size.
 
     `path` and `out_dir` may be local paths or fsspec URLs (the same `storage_options`
-    apply to both). Spill files always go to local disk: `spill_dir`, else `out_dir`
-    when it is local, else the system temp folder.
+    apply to both). Spill files always go to local disk: `spill_dir` if given, else the
+    system temp folder (a short path: nested output folders can exceed Windows' 260-character
+    path limit).
     """
     if not isinstance(mapping, TagMapping):
         mapping = TagMapping.from_csv(mapping)
     layout, cfg = layout or ExportLayout(), config or ImportConfig()
     values_dir = storage.join(out_dir, "values")
     storage.makedirs(values_dir, storage_options)
-    spill_parent = spill_dir or (None if storage.is_url(out_dir) else out_dir)
+    spill_parent = spill_dir
     if spill_parent is not None:
         Path(spill_parent).mkdir(parents=True, exist_ok=True)
     spill = Path(tempfile.mkdtemp(prefix="spill_", dir=spill_parent))

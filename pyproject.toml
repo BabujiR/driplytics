@@ -40,6 +40,8 @@ ignore = ["S101"]  # assert is fine in tests
 "apps/api/tests/db/conftest.py" = ["E501"]
 "apps/api/src/driplytics_api/db/migrate.py" = ["E501"]
 "apps/api/scripts/*" = ["S310"]  # local-dev helper calling http://localhost only
+# Routes build SQL from constant column lists only; values always go through %s parameters.
+"apps/api/src/driplytics_api/routes/*" = ["S608", "E501"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["driplytics_api", "driplytics_worker", "driplytics_engine"]
@@ -52,5 +54,5 @@ plugins = ["pydantic.mypy"]
 warn_unreachable = true
 
 [[tool.mypy.overrides]]
-module = ["arq.*", "s3fs.*", "fsspec.*", "driplytics_engine.*"]
+module = ["arq.*", "s3fs.*", "fsspec.*", "driplytics_engine.*", "pandas.*", "botocore.*"]
 ignore_missing_imports = true

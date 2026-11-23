@@ -8,10 +8,13 @@ are skipped, so the plain unit-test run still works anywhere.
 """
 
 import os
+import shutil
+import tempfile
 import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
@@ -65,6 +68,8 @@ def test_db() -> Iterator[TestDB]:
     try:
         psycopg.connect(ADMIN_URL, connect_timeout=2).close()
     except psycopg.OperationalError:
+        if os.environ.get("DRIPLYTICS_REQUIRE_DB"):  # CI: a missing database is a failure, never a skip
+            pytest.fail(f"PostgreSQL required but not reachable at {ADMIN_URL.split('@')[-1]}")
         pytest.skip(
             f"PostgreSQL not reachable at {ADMIN_URL.split('@')[-1]} (run: docker compose up -d postgres)"
         )
@@ -122,6 +127,17 @@ def seeded(test_db: TestDB) -> TestDB:
             for stmt in SEED_TENANT:
                 conn.execute(stmt, {"t": t})
     return test_db
+
+
+@pytest.fixture
+def short_tmp() -> Iterator[Path]:
+    """A short temp folder for local 'buckets'. pytest's tmp_path is deep, and tenant/site/import
+    folders under it can exceed Windows' 260-character path limit."""
+    d = Path(tempfile.mkdtemp(prefix="dl_"))
+    try:
+        yield d
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
 
 
 @contextmanager

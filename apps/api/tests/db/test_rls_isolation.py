@@ -33,11 +33,20 @@ def test_fail_closed_without_tenant(seeded, table: str) -> None:
         assert count(conn, table) == 0
 
 
+def true_count(seeded, table: str, tenant) -> int:  # type: ignore[no-untyped-def]
+    """Ground truth from the superuser (bypasses RLS). Other test files add rows through the API,
+    so the exact number varies; what matters is that RLS shows exactly these rows and no others."""
+    with psycopg.connect(seeded.admin_url) as admin:
+        return count(admin, table, "tenant_id = %s", (tenant,))
+
+
 @pytest.mark.parametrize("table", TENANT_TABLES)
 def test_tenant_sees_only_its_own_rows(seeded, table: str) -> None:
+    expected = true_count(seeded, table, TENANT_A)
+    assert expected >= 1 and true_count(seeded, table, TENANT_B) >= 1  # both tenants really have data
     with tx(seeded.app_url, tenant_id=TENANT_A) as conn:
-        assert count(conn, table) == 1
-        assert count(conn, table, "tenant_id <> %s", (TENANT_A,)) == 0
+        assert count(conn, table) == expected  # all of A's rows ...
+        assert count(conn, table, "tenant_id <> %s", (TENANT_A,)) == 0  # ... and nothing else
 
 
 @pytest.mark.parametrize("table", TENANT_TABLES[:-1])  # audit_event: UPDATE/DELETE not even granted
@@ -117,9 +126,10 @@ def test_user_context_shows_own_memberships_and_tenants_only(seeded) -> None:
 
 
 def test_context_is_transaction_local(seeded) -> None:
+    expected = true_count(seeded, "site", TENANT_A)
     with psycopg.connect(seeded.app_url) as conn:
         with conn.transaction():
             conn.execute("SELECT set_config('app.tenant_id', %s, true)", (str(TENANT_A),))
-            assert conn.execute("SELECT count(*) FROM site").fetchone()[0] == 1
+            assert conn.execute("SELECT count(*) FROM site").fetchone()[0] == expected >= 1
         # same connection, next transaction: context is gone (no leak between pooled requests)
         assert conn.execute("SELECT count(*) FROM site").fetchone()[0] == 0

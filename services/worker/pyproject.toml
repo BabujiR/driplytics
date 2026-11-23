@@ -8,6 +8,9 @@ dependencies = [
   "watchfiles>=0.24",  # arq --watch (hot reload in local dev)
   "pydantic-settings>=2.6",
   "driplytics-engine",
+  "psycopg[binary]>=3.2",
+  "fsspec>=2024.10",
+  "s3fs>=2024.10",
 ]
 
 [tool.uv.sources]

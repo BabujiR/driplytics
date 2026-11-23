@@ -58,12 +58,14 @@ switch ($Task) {
   "test-db"   { Run "uv run --all-packages pytest -m db" }
   "migrate"   { Run "docker compose run --rm migrate" }
   "token"     { Run "uv run python apps/api/scripts/dev_token.py alice --tenant" }
+  "demo"      { Run "uv run python apps/api/scripts/dev_import.py" }
+  "check"     { Run "uv run ruff check ."; Run "uv run ruff format --check ."; Run "uv run mypy"; Run "uv run python scripts/check_portability.py"; Run "uv run --all-packages pytest -ra" }
   "lint"      { Run "uv run ruff check ."; Run "uv run ruff format --check ."; Run "uv run mypy"; Run "pnpm lint" }
   "typecheck" { Run "uv run mypy"; Run "pnpm typecheck" }
   "fmt"       { Run "uv run ruff format ."; Run "uv run ruff check --fix ."; Run "pnpm format" }
   "bench"     { Run "uv run python engine/scripts/benchmark.py --days 1" }
   "clean"     { Run "docker compose down -v" }
   default {
-    Write-Host "Targets: doctor, install, dev, up, down, logs, ps, test, test-py, test-js, test-db, migrate, token, lint, typecheck, fmt, bench, clean"
+    Write-Host "Targets: doctor, install, dev, up, down, logs, ps, test, test-py, test-js, test-db, migrate, token, demo, check, lint, typecheck, fmt, bench, clean"
   }
 }
