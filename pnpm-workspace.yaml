@@ -1,0 +1,4 @@
+# JS/TS workspace. Python packages in apps/api and services/worker have no package.json and are ignored.
+packages:
+  - "apps/*"
+  - "packages/*"

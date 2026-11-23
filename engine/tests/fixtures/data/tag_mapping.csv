@@ -1,0 +1,7 @@
+raw_tag,canonical_tag,role,source_unit,target_unit,is_totalizer,low_flow_cutoff,rollover_max,max_gap_s,state_true,state_false
+FIT-101.PV,inlet_flow,flow,gpm,m3/h,false,0.23,,,,
+FQI-101.TOT,inlet_volume_rate,flow,gal,gpm,true,,1000000,300,,
+PIT-101.PV,inlet_pressure,pressure,psi,kPa,,,,,,
+TT-101.PV,water_temp,temperature,degF,degC,,,,,,
+P-201.RUN,pump_201_running,pump_state,,,,,,,RUNNING,STOPPED
+FV-101.ZSC,fv101_closed,valve_state,,,,,,,1,0

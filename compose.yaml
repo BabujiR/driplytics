@@ -1,0 +1,173 @@
+# Driplytics local development stack (task P0-04).
+#   docker compose up --build        (or: make dev / .\tasks.ps1 dev)
+# Every setting has a working default; override any of them in a root .env file (see .env.example).
+name: driplytics
+
+x-app-env: &app-env
+  DRIPLYTICS_ENV: ${DRIPLYTICS_ENV:-local}
+  DRIPLYTICS_LOG_LEVEL: ${DRIPLYTICS_LOG_LEVEL:-INFO}
+  DRIPLYTICS_DATABASE_URL: postgresql://${POSTGRES_USER:-driplytics}:${POSTGRES_PASSWORD:-driplytics-dev}@postgres:5432/${POSTGRES_DB:-driplytics}
+  DRIPLYTICS_REDIS_URL: redis://redis:6379/0
+  DRIPLYTICS_STORAGE_PROTOCOL: s3
+  DRIPLYTICS_STORAGE_ENDPOINT_URL: http://minio:9000
+  DRIPLYTICS_STORAGE_KEY: ${MINIO_ROOT_USER:-driplytics}
+  DRIPLYTICS_STORAGE_SECRET: ${MINIO_ROOT_PASSWORD:-driplytics-dev-secret}
+  DRIPLYTICS_RAW_BUCKET: ${STORAGE_RAW_BUCKET:-driplytics-raw}
+  DRIPLYTICS_DATA_BUCKET: ${STORAGE_DATA_BUCKET:-driplytics-data}
+  DRIPLYTICS_STORAGE_AUTO_CREATE_BUCKETS: "true"   # local dev only (ADR 0017)
+
+services:
+  # ---------------------------------------------------------------- data services
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-driplytics}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-driplytics-dev}
+      POSTGRES_DB: ${POSTGRES_DB:-driplytics}
+    ports: ["${POSTGRES_PORT:-5432}:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["${REDIS_PORT:-6379}:6379"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    # S3-compatible stand-in for Cloud Storage / S3 (ADR 0007, ADR 0017).
+    # MinIO removed its own images from Docker Hub and Quay in Sept 2026; Chainguard publishes a free,
+    # maintained build. It is distroless (no shell), so it has no in-container health check: the API's
+    # /health/ready check covers storage instead, and the API creates the buckets in local dev.
+    image: cgr.dev/chainguard/minio:latest
+    user: "0:0"   # local dev only: the image runs as uid 65532, which can't write a fresh named volume
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-driplytics}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-driplytics-dev-secret}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes: [miniodata:/data]
+
+  mailpit:
+    # Local inbox for weekly reports and notifications: http://localhost:8025
+    image: axllent/mailpit:latest
+    ports:
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  keycloak:
+    # Local OIDC provider (ADR 0004). Admin console: http://localhost:8080 (admin / admin-dev).
+    # Test users: alice / Passw0rd!dev (Riverbend), bob / Passw0rd!dev (Lakeside).
+    image: quay.io/keycloak/keycloak:26.0
+    command: ["start-dev", "--import-realm", "--health-enabled=true"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin-dev}
+    ports: ["${KEYCLOAK_PORT:-8080}:8080"]
+    volumes: ["./infra/docker/keycloak:/opt/keycloak/data/import:ro"]
+    healthcheck:
+      # The image has no curl; probe the management port with bash.
+      test:
+        - CMD-SHELL
+        - >
+          exec 3<>/dev/tcp/127.0.0.1/9000 &&
+          printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          grep -q '200 OK' <&3
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  # ---------------------------------------------------------------- application
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/python.Dockerfile
+      args: { PACKAGE: driplytics-api }
+    command:
+      - uvicorn
+      - driplytics_api.main:app
+      - --host=0.0.0.0
+      - --port=8000
+      - --reload
+      - --reload-dir=/app/apps/api/src
+    environment: *app-env
+    ports: ["${API_PORT:-8000}:8000"]
+    volumes:
+      - ./apps/api/src:/app/apps/api/src
+      - ./engine/src:/app/engine/src
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_started }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+
+  worker:
+    build:
+      context: .
+      dockerfile: infra/docker/python.Dockerfile
+      args: { PACKAGE: driplytics-worker }
+    command: ["arq", "--watch", "/app/services/worker/src", "driplytics_worker.main.WorkerSettings"]
+    environment: *app-env
+    volumes:
+      - ./services/worker/src:/app/services/worker/src
+      - ./engine/src:/app/engine/src
+    depends_on:
+      redis: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+      minio: { condition: service_started }
+    healthcheck:
+      test: ["CMD", "arq", "--check", "driplytics_worker.main.WorkerSettings"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/docker/web.Dockerfile
+    environment:
+      API_INTERNAL_URL: http://api:8000
+      WATCHPACK_POLLING: "true"   # reliable hot reload on Windows/macOS bind mounts
+    ports: ["${WEB_PORT:-3000}:3000"]
+    volumes:
+      - ./apps/web:/app/apps/web
+      - ./packages:/app/packages
+      - /app/node_modules
+      - /app/apps/web/node_modules
+      - /app/apps/web/.next
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:

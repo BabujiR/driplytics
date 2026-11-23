@@ -1,0 +1,8 @@
+{
+  "timestamp_col": "Date/Time",
+  "upstream_flow_col": "CH1 Volume Flow",
+  "upstream_quality_col": "CH1 Signal Quality",
+  "downstream_flow_col": "CH2 Volume Flow",
+  "downstream_quality_col": "CH2 Signal Quality",
+  "skiprows": 3
+}

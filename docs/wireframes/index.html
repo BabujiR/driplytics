@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Driplytics – low-fidelity wireframes (Phase 0)</title>
+<style>
+  :root{--ink:#222;--mid:#666;--line:#bbb;--fill:#eee;--fill2:#f6f6f6;--note:#fff7c2;--noteline:#d9c65a}
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:#fafafa}
+  header.doc{padding:16px 24px;border-bottom:1px solid var(--line);background:#fff}
+  header.doc h1{margin:0 0 4px;font-size:18px}
+  header.doc p{margin:0;color:var(--mid)}
+  nav.tabs{display:flex;gap:4px;padding:12px 24px 0;background:#fff;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  nav.tabs button{font:inherit;padding:8px 14px;border:1px solid var(--line);border-bottom:none;background:var(--fill2);cursor:pointer;border-radius:6px 6px 0 0}
+  nav.tabs button[aria-selected=true]{background:#fff;font-weight:600;position:relative;top:1px}
+  nav.tabs button:focus-visible{outline:2px solid #333;outline-offset:2px}
+  main{padding:20px 24px 40px}
+  section.screen{display:none}
+  section.screen.active{display:block}
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px;align-items:start}
+  @media (max-width:1000px){.layout{grid-template-columns:1fr}}
+  .frame{background:#fff;border:2px solid #444;border-radius:8px;overflow:hidden;min-width:0}
+  .app{display:grid;grid-template-columns:170px minmax(0,1fr);min-height:560px}
+  .side{border-right:1px solid var(--line);padding:12px;background:var(--fill2)}
+  .side .logo{font-weight:700;margin-bottom:14px}
+  .side .item{padding:6px 8px;border-radius:4px;margin-bottom:2px;color:var(--mid)}
+  .side .item.on{background:var(--fill);color:var(--ink);font-weight:600}
+  .side .sep{margin:10px 0 6px;font-size:11px;text-transform:uppercase;color:var(--mid)}
+  .topbar{display:flex;gap:10px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--line);font-size:13px}
+  .topbar .grow{flex:1}
+  .pill{border:1px solid var(--line);border-radius:999px;padding:2px 10px;background:#fff;white-space:nowrap}
+  .content{padding:16px;min-width:0}
+  .box{border:1px dashed #999;border-radius:6px;padding:10px;background:var(--fill2)}
+  .solid{border:1px solid var(--line);border-radius:6px;padding:10px;background:#fff}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .grow{flex:1}
+  .btn{display:inline-block;border:1px solid #555;border-radius:5px;padding:4px 10px;background:#fff;font-size:13px;white-space:nowrap}
+  .btn.primary{background:#444;color:#fff}
+  .muted{color:var(--mid)}
+  .h{font-size:18px;font-weight:700;margin:0 0 6px}
+  .h2{font-size:15px;font-weight:700;margin:14px 0 6px}
+  .stat{font-size:22px;font-weight:700}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{border-bottom:1px solid var(--line);padding:6px;text-align:left;vertical-align:middle}
+  th{background:var(--fill2);font-weight:600}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  .chip{display:inline-block;border:1px solid #888;border-radius:999px;padding:0 8px;font-size:12px;background:#fff;white-space:nowrap}
+  .chip.dark{background:#555;color:#fff;border-color:#555}
+  .chip.hatch{background:repeating-linear-gradient(45deg,#fff,#fff 3px,#ddd 3px,#ddd 6px)}
+  .spark{display:inline-block;width:70px;height:16px;border-bottom:1px solid #999;background:linear-gradient(135deg,transparent 45%,#999 46%,#999 50%,transparent 51%)}
+  .mono{font-family:ui-monospace,"JetBrains Mono",Consolas,monospace;font-size:12.5px}
+  .n{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#333;color:#fff;font-size:11px;font-weight:700;margin-right:4px;flex:none}
+  .notes{background:var(--note);border:1px solid var(--noteline);border-radius:8px;padding:12px 14px}
+  .notes h3{margin:0 0 8px;font-size:14px}
+  .notes ol{margin:0;padding-left:20px}
+  .notes li{margin-bottom:6px}
+  .steps{display:flex;gap:6px;margin-bottom:14px}
+  .steps div{flex:1;border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:12.5px;background:#fff}
+  .steps div.on{border:2px solid #333;font-weight:600}
+  .steps div.done{background:var(--fill)}
+  .drop{border:2px dashed #888;border-radius:10px;padding:34px;text-align:center;background:var(--fill2)}
+  .bar{display:flex;height:26px;border-radius:5px;overflow:hidden;border:1px solid #555}
+  .bar div{display:flex;align-items:center;justify-content:center;font-size:12px;white-space:nowrap;overflow:hidden}
+  .chart{position:relative;height:120px;border:1px solid var(--line);border-radius:4px;background:#fff;overflow:hidden}
+  .chart .line{position:absolute;left:0;right:0;top:20%;bottom:30%;background:linear-gradient(180deg,transparent 0,transparent 15%,#777 15%,#777 17%,transparent 17%) 0 0/100% 100% no-repeat}
+  .chart .shade{position:absolute;top:0;bottom:0;background:rgba(0,0,0,.08);border-left:1px dashed #555;border-right:1px dashed #555}
+  .chart .hatch{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(0,0,0,.13) 4px,rgba(0,0,0,.13) 6px)}
+  .chart .cut{position:absolute;left:0;right:0;border-top:2px dashed #555}
+  .band{display:flex;height:16px;border:1px solid var(--line);border-radius:3px;overflow:hidden;font-size:10px}
+  .band div{display:flex;align-items:center;padding-left:4px;white-space:nowrap;overflow:hidden}
+  .cols{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:12px}
+  @media (max-width:760px){.cols{grid-template-columns:1fr}.app{grid-template-columns:1fr}.side{display:none}}
+  .kbd{border:1px solid #999;border-bottom-width:2px;border-radius:3px;padding:0 4px;font-size:11px;font-family:ui-monospace,monospace;background:#fff}
+</style>
+</head>
+<body>
+<header class="doc">
+  <h1>Driplytics: low-fidelity wireframes</h1>
+  <p>Phase 0 · for review. Grayscale on purpose: this checks layout, content and flow, not visual design. Yellow notes explain each numbered element. All data is synthetic.</p>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Wireframe screens">
+  <button role="tab" aria-selected="true" aria-controls="s1" id="t1">1 · Onboarding wizard</button>
+  <button role="tab" aria-selected="false" aria-controls="s2" id="t2">2 · Worklist (home)</button>
+  <button role="tab" aria-selected="false" aria-controls="s3" id="t3">3 · Finding detail</button>
+  <button role="tab" aria-selected="false" aria-controls="s4" id="t4">4 · Import report</button>
+  <button role="tab" aria-selected="false" aria-controls="s5" id="t5">5 · Mapping assistant</button>
+</nav>
+
+<main>
+
+<!-- ============================== 1. ONBOARDING ============================== -->
+<section class="screen active" id="s1" role="tabpanel" aria-labelledby="t1">
+<div class="layout">
+<div class="frame"><div class="app">
+  <div class="side"><div class="logo">💧 Driplytics</div><div class="item on">Get started</div><div class="item">Worklist</div><div class="item">Data</div><div class="item">Settings</div></div>
+  <div>
+    <div class="topbar"><span class="pill">Riverbend WTP ▾</span><span class="grow"></span><span class="muted">Site time: America/New_York</span><span class="pill">BR ▾</span></div>
+    <div class="content">
+      <div class="steps"><div class="on"><span class="n">1</span>Upload export</div><div>2 · Review import</div><div>3 · Confirm tags</div><div>4 · First findings</div></div>
+      <div class="row" style="margin-bottom:10px"><div class="h grow">Upload a historian export</div><span class="pill"><span class="n">2</span>⏱ 0h 03m to first finding</span></div>
+      <div class="drop"><span class="n">3</span><b>Drag and drop CSV or Parquet files here</b><br><span class="muted">PI or IP.21 exports, long or wide format · up to 20 GB · or</span> <span class="btn">Browse files</span></div>
+      <div class="h2"><span class="n">4</span>We detected: <u>Long format · PI style</u> <span class="muted">(change)</span></div>
+      <table>
+        <tr><th>timestamp</th><th>tag</th><th>value</th><th>quality</th></tr>
+        <tr class="mono"><td>2026-11-01 00:50:00</td><td>FIT-101.PV</td><td>249.81</td><td>Good</td></tr>
+        <tr class="mono"><td>2026-11-01 00:50:00</td><td>FQI-101.TOT</td><td>999000.0</td><td>Good</td></tr>
+        <tr class="mono"><td>2026-11-01 00:50:00</td><td>P-201.RUN</td><td>RUNNING</td><td>Good</td></tr>
+      </table>
+      <div class="row" style="margin-top:8px"><span class="muted">Timestamps are in</span><span class="pill">America/New_York ▾</span><span class="muted">· column mapping looks right?</span><span class="pill">Edit columns</span></div>
+      <div class="row" style="margin-top:16px"><span class="n">5</span><span class="btn">Use demo data instead</span><span class="grow"></span><span class="muted">🔒 Read-only: Driplytics never writes to your control system</span><span class="btn primary">Start import →</span></div>
+    </div>
+  </div>
+</div></div>
+<aside class="notes"><h3>Notes: onboarding wizard</h3><ol>
+  <li><b>4-step progress</b> from upload to first findings. Users always know how far they are from value.</li>
+  <li><b>Time-to-first-finding counter</b>: our key metric, visible to the user as a promise ("hours, not months").</li>
+  <li><b>Drop zone</b> accepts large files with direct-to-storage upload; several files at once.</li>
+  <li><b>Format detection with preview</b> of the first rows, the time zone choice and column mapping. Fix it here, before importing.</li>
+  <li><b>Demo data</b> lets a prospect see value without their own data. The <b>read-only note</b> reassures plant IT.</li>
+</ol></aside>
+</div>
+</section>
+
+<!-- ============================== 2. WORKLIST ============================== -->
+<section class="screen" id="s2" role="tabpanel" aria-labelledby="t2">
+<div class="layout">
+<div class="frame"><div class="app">
+  <div class="side"><div class="logo">💧 Driplytics</div><div class="item on">Worklist</div><div class="item">Findings</div><div class="item">Assets</div><div class="sep">Data</div><div class="item">Imports</div><div class="item">Tag mapping</div><div class="item">Connectors</div><div class="sep">More</div><div class="item">Field kit</div><div class="item">Savings</div><div class="item">Reports</div><div class="item">Settings</div></div>
+  <div>
+    <div class="topbar"><span class="pill">Riverbend WTP ▾</span><span class="pill">🔍 Search tags, assets… <span class="kbd">Ctrl K</span></span><span class="grow"></span><span class="muted">America/New_York</span><span class="pill">BR ▾</span></div>
+    <div class="content">
+      <div class="solid row" style="margin-bottom:12px"><span class="n">1</span><div class="grow"><div class="muted">Estimated loss</div><div class="stat">$84,200 / year</div><div class="muted">across 7 open findings</div></div><div><div class="muted">Verified fixed this quarter</div><div class="stat">$12,400</div></div><div><div class="muted">Data freshness</div><div><b>2 h ago</b> · 1 import</div></div></div>
+      <div class="row" style="margin-bottom:8px"><span class="n">2</span><span class="pill">Area: All ▾</span><span class="pill">Check: All ▾</span><span class="pill">Status: Open ▾</span><span class="pill">Confidence: Med+ ▾</span><span class="grow"></span><span class="pill">Saved views ▾</span></div>
+      <table>
+        <tr><th>#</th><th>Asset</th><th>Problem</th><th class="num">$/year</th><th>Trend</th><th>For</th><th>Confidence</th><th>Status</th><th></th></tr>
+        <tr><td>1</td><td><b>FV-101</b><br><span class="muted">Filter gallery</span></td><td>Passing ~4 gpm while closed</td><td class="num"><b>$31,500</b></td><td><span class="spark"></span></td><td>18 d</td><td>● High</td><td><span class="chip">New</span></td><td><span class="n">3</span><span class="btn">Verify</span> <span class="btn">⋯</span></td></tr>
+        <tr><td>2</td><td><b>P-201</b><br><span class="muted">High-service pumps</span></td><td>Flow with pump off (check valve?)</td><td class="num"><b>$19,800</b></td><td><span class="spark"></span></td><td>9 d</td><td>● High</td><td><span class="chip">Verifying</span></td><td><span class="btn">Open</span> <span class="btn">⋯</span></td></tr>
+        <tr><td>3</td><td><b>FIT-301 vs FIT-305</b></td><td>Meters disagree by 6 %</td><td class="num">$12,100</td><td><span class="spark"></span></td><td>41 d</td><td>◐ Medium</td><td><span class="chip">New</span></td><td><span class="btn">Verify</span> <span class="btn">⋯</span></td></tr>
+        <tr><td>4</td><td><b>Clearwell</b></td><td>Night flow 3× baseline</td><td class="num">$8,900</td><td><span class="spark"></span></td><td>6 d</td><td>◐ Medium</td><td><span class="chip">New</span></td><td><span class="btn">Verify</span> <span class="btn">⋯</span></td></tr>
+        <tr class="muted"><td>…</td><td colspan="8">3 more · 2 checks skipped (missing tags) <u>see why</u></td></tr>
+      </table>
+      <div class="row" style="margin-top:10px"><span class="n">4</span><span class="muted">⋯ menu: Create work order · Dismiss (reason required) · Snooze · Copy link</span></div>
+    </div>
+  </div>
+</div></div>
+<aside class="notes"><h3>Notes: worklist (home)</h3><ol>
+  <li><b>Headline in dollars</b>: total open loss, verified savings and data freshness. The manager's whole answer in one line.</li>
+  <li><b>Filters and saved views</b> for engineers; defaults hide low-confidence findings to keep the list calm.</li>
+  <li><b>One clear next action per row</b> (Verify / Open). Confidence is shown in words plus an icon, never a bare decimal.</li>
+  <li><b>Dismiss needs a reason</b>, and those reasons feed back into check thresholds (false-alarm control).</li>
+</ol><p style="margin:8px 0 0"><b>Question for you:</b> cap the list at the top 10 by default (alert budget), or show everything?</p></aside>
+</div>
+</section>
+
+<!-- ============================== 3. FINDING DETAIL ============================== -->
+<section class="screen" id="s3" role="tabpanel" aria-labelledby="t3">
+<div class="layout">
+<div class="frame"><div class="app">
+  <div class="side"><div class="logo">💧 Driplytics</div><div class="item">Worklist</div><div class="item on">Findings</div><div class="item">Assets</div><div class="item">Imports</div><div class="item">Field kit</div><div class="item">Settings</div></div>
+  <div>
+    <div class="topbar"><span class="muted">Riverbend WTP › Filter gallery › FV-101 › Finding #1</span><span class="grow"></span><span class="pill">🔗 Copy link</span></div>
+    <div class="content">
+      <div class="row"><span class="n">1</span><div class="grow"><div class="h">Valve FV-101 is passing about 4 gpm while closed</div><div class="muted">Downstream flow stayed above the meter's 1 gpm cutoff for 18 min (10:12–10:30) while the limit switch read CLOSED. Signal quality ≥ 80 %. Seen on 14 of the last 18 days.</div></div><span class="chip dark">High confidence</span></div>
+      <div class="row" style="margin:12px 0"><span class="btn primary">Verify in field</span><span class="btn">Create work order</span><span class="btn">Dismiss…</span><span class="grow"></span><span class="pill">1h · 24h · <b>7d</b> · 30d</span><span class="pill">Local ⇄ UTC</span></div>
+      <div class="cols">
+        <div>
+          <div class="h2"><span class="n">2</span>Evidence</div>
+          <svg viewBox="0 0 600 130" width="100%" role="img" aria-label="Downstream flow drops from about 300 gpm to about 4 gpm when the valve closes, stays above the 1 gpm cutoff while closed, then rises again" style="border:1px solid #bbb;border-radius:4px;background:#fff;display:block">
+            <defs><pattern id="hp" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3" height="6" fill="#ddd"/></pattern></defs>
+            <rect x="48" y="0" width="36" height="130" fill="url(#hp)"/>
+            <rect x="84" y="0" width="204" height="130" fill="#000" opacity=".07"/>
+            <line x1="84" y1="0" x2="84" y2="130" stroke="#555" stroke-dasharray="3 3"/><line x1="288" y1="0" x2="288" y2="130" stroke="#555" stroke-dasharray="3 3"/>
+            <rect x="288" y="0" width="96" height="130" fill="url(#hp)"/>
+            <line x1="0" y1="108" x2="600" y2="108" stroke="#555" stroke-width="1.5" stroke-dasharray="6 4"/>
+            <polyline fill="none" stroke="#333" stroke-width="2" points="0,22 20,20 40,23 48,22 60,60 72,90 84,96 120,95 160,97 200,94 240,96 288,95 330,96 384,95 400,60 420,24 460,21 520,23 600,22"/>
+            <text x="594" y="14" font-size="11" text-anchor="end" fill="#666">Downstream flow (gpm)</text>
+            <text x="594" y="123" font-size="11" text-anchor="end" fill="#666">cutoff 1 gpm</text>
+            <text x="186" y="84" font-size="11" text-anchor="middle" fill="#333">~4 gpm while closed</text>
+          </svg>
+          <div style="margin-top:4px"><div class="band"><div style="width:8%;background:#fff">open</div><div style="width:56%;background:#ccc">CLOSED</div><div style="width:36%;background:#fff">open</div></div><div class="muted" style="font-size:11px">Valve FV-101 (limit switch)</div></div>
+          <div style="margin-top:4px"><div class="band"><div style="width:48%;background:#e8e8e8">signal 85 %</div><div style="width:16%;background:#bbb">signal 25 %</div><div style="width:36%;background:#e8e8e8">85 %</div></div><div class="muted" style="font-size:11px">Clamp-on signal quality</div></div>
+          <div class="row" style="margin-top:6px;font-size:12px"><span class="chip">▒ flagged period</span><span class="chip hatch">excluded</span><span class="chip">--- cutoff</span><span class="grow"></span><span class="muted">View as table · Download CSV</span></div>
+          <div class="h2"><span class="n">3</span>What we excluded and why ▾</div>
+          <div class="box">2 min after the valve closed (still stroking) · 10 min with signal quality below 60 % · no stale state data</div>
+        </div>
+        <div>
+          <div class="h2"><span class="n">4</span>Estimated loss</div>
+          <div class="solid"><div class="stat">$31,500 / yr</div><table><tr><td>Water · 2.1 M gal × $9.80/kgal</td><td class="num">$20,600</td></tr><tr><td>Pumping energy · 74 MWh × $0.11</td><td class="num">$8,100</td></tr><tr><td>Chemicals · 2.1 M gal × $1.33/kgal</td><td class="num">$2,800</td></tr></table><div class="muted" style="margin-top:6px">Assumes the leak persists all year when closed. <u>Edit assumptions</u></div></div>
+          <div class="h2"><span class="n">5</span>Timeline</div>
+          <div class="box" style="font-size:12.5px">● Detected Nov 10<br>○ Verify in field<br>○ Work order<br>○ Fixed<br>○ Savings verified</div>
+          <div class="h2">Comments</div><div class="box muted" style="font-size:12.5px">@Maria can you check FV-101 Tuesday?</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></div>
+<aside class="notes"><h3>Notes: finding detail</h3><ol>
+  <li><b>The plain-English conclusion is the page title</b>; the supporting facts sit directly under it. The confidence badge is in words.</li>
+  <li><b>Evidence chart</b>: stacked panels with a shared time axis, the flagged period shaded, excluded periods hatched, the cutoff dashed, and state bands below. "View as table" is the accessible alternative.</li>
+  <li><b>Exclusions</b> are shown openly. This is what makes engineers trust it.</li>
+  <li><b>Loss breakdown</b> with editable assumptions, so finance can see how $31.5k was calculated.</li>
+  <li><b>Status timeline</b> from detection to verified savings, plus comments with @mentions.</li>
+</ol></aside>
+</div>
+</section>
+
+<!-- ============================== 4. IMPORT REPORT ============================== -->
+<section class="screen" id="s4" role="tabpanel" aria-labelledby="t4">
+<div class="layout">
+<div class="frame"><div class="app">
+  <div class="side"><div class="logo">💧 Driplytics</div><div class="item">Worklist</div><div class="item">Findings</div><div class="sep">Data</div><div class="item on">Imports</div><div class="item">Tag mapping</div><div class="item">Connectors</div></div>
+  <div>
+    <div class="topbar"><span class="muted">Riverbend WTP › Imports › historian_long.csv</span><span class="grow"></span><span class="chip">Completed in 4.2 s</span></div>
+    <div class="content">
+      <div class="solid row" style="margin-bottom:12px;border:2px solid #333"><span class="n">1</span><div class="grow"><b>Scoring is blocked:</b> 1 tag in this file isn't mapped (XV-999.PV, 3 values).</div><span class="btn primary">Map these tags →</span><span class="btn">Ignore tag</span></div>
+      <div class="h2"><span class="n">2</span>Every value accounted for</div>
+      <div class="bar"><div style="width:93%;background:#ddd">Accepted 5,157</div><div style="width:4%;background:#888;color:#fff">19</div><div style="width:3%;background:#bbb">3</div></div>
+      <div class="mono" style="margin:6px 0 12px">5,179 values in file = 5,157 accepted + 19 rejected + 3 duplicates ✓</div>
+      <div class="cols">
+        <div>
+          <div class="h2"><span class="n">3</span>Why 19 values were rejected</div>
+          <table>
+            <tr><th>Reason</th><th class="num">Values</th><th>Example</th></tr>
+            <tr><td>Bad quality / system state</td><td class="num">4</td><td class="mono">FIT-101.PV · "Bad Input"</td></tr>
+            <tr><td>Unmapped tag</td><td class="num">3</td><td class="mono">XV-999.PV</td></tr>
+            <tr><td>Time doesn't exist (spring DST)</td><td class="num">3</td><td class="mono">2026-03-08 02:15</td></tr>
+            <tr><td>Unreadable timestamp</td><td class="num">2</td><td class="mono">"not-a-date"</td></tr>
+            <tr><td>Empty value</td><td class="num">2</td><td class="mono">PIT-101.PV · ""</td></tr>
+            <tr><td>Not a number</td><td class="num">2</td><td class="mono">"12..5"</td></tr>
+            <tr><td>Same time, different values</td><td class="num">2</td><td class="mono">FIT-101.PV 05:55</td></tr>
+            <tr><td>Unknown valve state</td><td class="num">1</td><td class="mono">FV-101.ZSC · "TRAVEL"</td></tr>
+          </table>
+          <div class="row" style="margin-top:8px"><span class="btn">⬇ Download rejected rows (CSV)</span><span class="btn">⬇ Full report (JSON)</span></div>
+        </div>
+        <div>
+          <div class="h2"><span class="n">4</span>Things we handled for you</div>
+          <div class="box" style="font-size:12.5px">• <b>Clocks went back</b> Nov 1: the repeated 1 AM hour was placed correctly (2,161 values).<br>• <b>Totalizer FQI-101</b> rolled over at 1,000,000 gal (04:54 UTC) and was reset once (06:30 UTC); rates were computed around both.<br>• 1 value had <b>uncertain</b> quality and was kept, flagged.</div>
+          <div class="h2"><span class="n">5</span>Per-tag summary</div>
+          <table><tr><th>Tag</th><th class="num">Values</th><th>Range (UTC)</th></tr><tr><td class="mono">inlet_flow</td><td class="num">958</td><td>Mar 8 – Nov 1</td></tr><tr><td class="mono">pump_201_running</td><td class="num">841</td><td>Nov 1</td></tr><tr class="muted"><td colspan="3">+4 more</td></tr></table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></div>
+<aside class="notes"><h3>Notes: import report</h3><ol>
+  <li><b>Blocking banner</b> when unmapped tags stop scoring, with the fix one click away.</li>
+  <li><b>The accounting promise made visible:</b> one stacked bar and the written equation with a ✓. Nothing silently disappears.</li>
+  <li><b>Rejection reasons in plain words</b>, sorted by count, with a real example each and downloadable rows.</li>
+  <li><b>"Things we handled for you"</b> turns DST and totalizer handling into trust-building plain sentences.</li>
+  <li><b>Per-tag summary</b> to spot a tag with suspiciously few values.</li>
+</ol></aside>
+</div>
+</section>
+
+<!-- ============================== 5. MAPPING ASSISTANT ============================== -->
+<section class="screen" id="s5" role="tabpanel" aria-labelledby="t5">
+<div class="layout">
+<div class="frame"><div class="app">
+  <div class="side"><div class="logo">💧 Driplytics</div><div class="item">Worklist</div><div class="sep">Data</div><div class="item">Imports</div><div class="item on">Tag mapping</div><div class="item">Connectors</div></div>
+  <div>
+    <div class="topbar"><span class="muted">Riverbend WTP › Tag mapping</span><span class="grow"></span><span class="pill">Template: Water treatment ▾</span></div>
+    <div class="content">
+      <div class="solid" style="margin-bottom:10px"><div class="row"><span class="n">1</span><b class="grow">1,842 of 2,000 tags confirmed</b><span class="muted">Scoring unlocks when all <b>required</b> tags (134) are confirmed: 129 / 134</span></div><div class="bar" style="height:10px;margin-top:6px"><div style="width:92%;background:#666"></div><div style="width:8%;background:#eee"></div></div></div>
+      <div class="row" style="margin-bottom:8px"><span class="n">2</span><span class="pill">Sort: lowest confidence first ▾</span><span class="pill">Role: All ▾</span><span class="pill">Status: Needs review (158) ▾</span><span class="grow"></span><span class="btn">Accept all ≥ 90 % (96)</span></div>
+      <table>
+        <tr><th><input type="checkbox" aria-label="select all"></th><th>Raw tag</th><th>Data</th><th>Suggested role</th><th>Canonical name</th><th>Units</th><th>Confidence</th><th></th></tr>
+        <tr style="outline:2px solid #333"><td><input type="checkbox" aria-label="select"></td><td class="mono">HV-410.STS</td><td><span class="spark"></span></td><td>valve_state<br><span class="muted" style="font-size:11.5px">2 values: 0 / 1 · "STS" = status</span></td><td class="mono">hv410_closed</td><td>1 = CLOSED?</td><td><span class="chip">◔ Low 48 %</span></td><td><span class="btn">Edit</span></td></tr>
+        <tr><td><input type="checkbox" aria-label="select"></td><td class="mono">FQ_RAW_IN</td><td><span class="spark"></span></td><td>flow · <b>totalizer</b><br><span class="muted" style="font-size:11.5px">always increases, 1 reset seen</span></td><td class="mono">raw_inflow_rate</td><td>gal → gpm</td><td><span class="chip">◑ Med 71 %</span></td><td><span class="btn">Accept</span></td></tr>
+        <tr><td><input type="checkbox" aria-label="select"></td><td class="mono">TT-220.PV</td><td><span class="spark"></span></td><td>temperature<br><span class="muted" style="font-size:11.5px">ISA "TT" + values 55–70 → °F</span></td><td class="mono">clearwell_temp</td><td>°F → °C</td><td><span class="chip">● High 96 %</span></td><td><span class="btn">Accept</span></td></tr>
+        <tr><td><input type="checkbox" aria-label="select"></td><td class="mono">LIT-500.PV</td><td><span class="spark"></span></td><td>level</td><td class="mono">clearwell_level</td><td>ft → m</td><td><span class="chip">● High 94 %</span></td><td><span class="btn">Accept</span></td></tr>
+      </table>
+      <div class="row" style="margin-top:10px"><span class="n">3</span><span class="muted">Keyboard: <span class="kbd">J</span>/<span class="kbd">K</span> move · <span class="kbd">A</span> accept · <span class="kbd">E</span> edit · <span class="kbd">X</span> select · <span class="kbd">I</span> ignore tag</span><span class="grow"></span><span class="n">4</span><span class="muted">Every change recorded (who · when · before)</span></div>
+    </div>
+  </div>
+</div></div>
+<aside class="notes"><h3>Notes: mapping assistant</h3><ol>
+  <li><b>Progress toward unlocking scoring</b>: only <i>required</i> tags (the ones checks need) block scoring, so users focus on those first.</li>
+  <li><b>Lowest confidence first</b> plus bulk-accept above a threshold. The engineer's time goes where judgment is needed.</li>
+  <li><b>Keyboard-first</b> for thousands of tags; a virtualized table stays fast at 20,000 rows.</li>
+  <li><b>Audit trail</b> on every change. Each suggestion shows a <b>one-line rationale</b> and a sparkline of the data's shape.</li>
+</ol></aside>
+</div>
+</section>
+
+</main>
+
+<script>
+  const tabs=[...document.querySelectorAll('[role=tab]')];
+  function show(t){tabs.forEach(b=>{const on=b===t;b.setAttribute('aria-selected',on);document.getElementById(b.getAttribute('aria-controls')).classList.toggle('active',on)});t.focus()}
+  tabs.forEach((b,i)=>{b.addEventListener('click',()=>show(b));b.addEventListener('keydown',e=>{if(e.key==='ArrowRight')show(tabs[(i+1)%tabs.length]);if(e.key==='ArrowLeft')show(tabs[(i-1+tabs.length)%tabs.length])})});
+</script>
+</body>
+</html>

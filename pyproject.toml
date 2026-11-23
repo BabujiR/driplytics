@@ -1,0 +1,52 @@
+# Driplytics Python workspace root (virtual: no package of its own). See ADR 0002.
+#   uv sync --all-packages       install everything
+#   uv run --all-packages pytest run all Python tests
+
+[tool.uv.workspace]
+members = ["apps/api", "services/worker", "engine"]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3",
+  "pytest-asyncio>=0.24",
+  "httpx>=0.28",
+  "ruff>=0.8",
+  "mypy>=1.13",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["engine/tests", "apps/api/tests", "services/worker/tests"]
+addopts = "--import-mode=importlib -q"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+  # FastAPI's TestClient still uses httpx; Starlette now warns about it. Remove once FastAPI updates.
+  "ignore:Using `httpx` with `starlette.testclient` is deprecated",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+# The engine predates these lint rules; it is brought under lint and mypy in P0-05.
+extend-exclude = ["engine", "**/node_modules", "**/.next"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF", "ASYNC", "S"]
+ignore = ["S101"]  # assert is fine in tests
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["driplytics_api", "driplytics_worker", "plant_ingest"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["apps/api/src", "services/worker/src"]
+plugins = ["pydantic.mypy"]
+warn_unreachable = true
+
+[[tool.mypy.overrides]]
+module = ["arq.*", "s3fs.*", "fsspec.*", "plant_ingest.*"]
+ignore_missing_imports = true

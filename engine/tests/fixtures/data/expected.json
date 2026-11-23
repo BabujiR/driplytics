@@ -1,0 +1,56 @@
+{
+  "long": {
+    "rejected_by_reason": {
+      "nonexistent_local_time": 3,
+      "empty_value": 2,
+      "bad_quality": 4,
+      "non_numeric_value": 2,
+      "unrecognized_state": 1,
+      "conflicting_duplicate": 2,
+      "unparseable_timestamp": 2,
+      "unmapped_tag": 3
+    },
+    "duplicates": 3,
+    "total_values": 5179,
+    "rejected": 19,
+    "accepted": 5157,
+    "unmapped_tags": [
+      "XV-999.PV"
+    ],
+    "accepted_uncertain": 1,
+    "fall_samples_per_tag": 841,
+    "totalizer_events": {
+      "rollover": 1,
+      "reset": 1
+    }
+  },
+  "wide": {
+    "total_values": 3368,
+    "rejected_by_reason": {
+      "unmapped_tag": 842,
+      "empty_value": 3,
+      "bad_quality": 2
+    },
+    "rejected": 847,
+    "duplicates": 3,
+    "accepted": 2518,
+    "unmapped_tags": [
+      "XV-999.PV"
+    ]
+  },
+  "leakby": {
+    "clock_offset_s": 45,
+    "rows": 3602,
+    "garbage_rows": 2,
+    "event1": {
+      "start_utc": "2026-11-10T15:12:00+00:00",
+      "end_utc": "2026-11-10T15:29:50+00:00",
+      "duration_min": 18.0,
+      "condition": "valve_closed"
+    },
+    "event2": {
+      "start_utc_approx": "2026-11-10T15:50:00+00:00",
+      "condition": "pump_off"
+    }
+  }
+}
