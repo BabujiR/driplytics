@@ -6,3 +6,5 @@ pnpm-lock.yaml
 engine
 docs/wireframes
 **/*.py
+packages/contracts/openapi.json
+packages/contracts/src/generated

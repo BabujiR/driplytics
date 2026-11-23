@@ -22,11 +22,19 @@ from driplytics_api.auth.deps import TenantContext, require_role
 from driplytics_api.auth.roles import Role
 from driplytics_api.db.connection import Conn, request_tx
 from driplytics_api.queue import JobQueue, get_queue
+from driplytics_api.responses import (
+    COMMON_ERRORS,
+    ErrorOut,
+    ImportCreatedOut,
+    ImportDetailOut,
+    ImportOut,
+    ImportReportOut,
+)
 from driplytics_api.schemas import ImportCreate, safe_filename
 from driplytics_api.settings import Settings, get_settings
 from driplytics_api.storage import object_size, presign_put
 
-router = APIRouter(prefix="/api/v1", tags=["imports"])
+router = APIRouter(prefix="/api/v1", tags=["imports"], responses=COMMON_ERRORS)
 
 Viewer = Annotated[TenantContext, Depends(require_role(Role.VIEWER))]
 Engineer = Annotated[TenantContext, Depends(require_role(Role.ENGINEER))]
@@ -53,7 +61,12 @@ def _get_import(conn: Conn, import_id: UUID, *, lock: bool = False) -> dict[str,
     return row
 
 
-@router.post("/sites/{site_id}/imports", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/sites/{site_id}/imports",
+    status_code=status.HTTP_201_CREATED,
+    response_model=ImportCreatedOut,
+    responses={413: {"model": ErrorOut, "description": "File too large"}},
+)
 def create_import(site_id: UUID, body: ImportCreate, ctx: Engineer, settings: SettingsDep) -> dict[str, Any]:
     if body.size_bytes > settings.max_upload_bytes:
         raise HTTPException(
@@ -131,7 +144,16 @@ def _mark_queued(settings: Settings, ctx: TenantContext, import_id: UUID) -> dic
         return row
 
 
-@router.post("/imports/{import_id}/start", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/imports/{import_id}/start",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=ImportOut,
+    responses={
+        409: {"model": ErrorOut, "description": "Not uploaded yet, or already started"},
+        413: {"model": ErrorOut, "description": "Uploaded file too large"},
+        503: {"model": ErrorOut, "description": "Job queue unavailable; call start again"},
+    },
+)
 async def start_import(
     import_id: UUID, ctx: Engineer, settings: SettingsDep, queue: Annotated[JobQueue, Depends(get_queue)]
 ) -> dict[str, Any]:
@@ -143,7 +165,7 @@ async def start_import(
     return row
 
 
-@router.get("/sites/{site_id}/imports")
+@router.get("/sites/{site_id}/imports", response_model=list[ImportOut])
 def list_imports(site_id: UUID, ctx: Viewer, settings: SettingsDep) -> list[dict[str, Any]]:
     with _tx(settings, ctx) as conn:
         return conn.execute(
@@ -152,7 +174,7 @@ def list_imports(site_id: UUID, ctx: Viewer, settings: SettingsDep) -> list[dict
         ).fetchall()
 
 
-@router.get("/imports/{import_id}")
+@router.get("/imports/{import_id}", response_model=ImportDetailOut)
 def get_import(import_id: UUID, ctx: Viewer, settings: SettingsDep) -> dict[str, Any]:
     with _tx(settings, ctx) as conn:
         imp = _get_import(conn, import_id)
@@ -164,7 +186,7 @@ def get_import(import_id: UUID, ctx: Viewer, settings: SettingsDep) -> dict[str,
     return {**imp, "summary": summary}
 
 
-@router.get("/imports/{import_id}/report")
+@router.get("/imports/{import_id}/report", response_model=ImportReportOut)
 def get_import_report(import_id: UUID, ctx: Viewer, settings: SettingsDep) -> dict[str, Any]:
     with _tx(settings, ctx) as conn:
         _get_import(conn, import_id)
@@ -175,7 +197,11 @@ def get_import_report(import_id: UUID, ctx: Viewer, settings: SettingsDep) -> di
     return report
 
 
-@router.get("/imports/{import_id}/rejected-examples.csv")
+@router.get(
+    "/imports/{import_id}/rejected-examples.csv",
+    response_class=Response,
+    responses={200: {"content": {"text/csv": {"schema": {"type": "string"}}}, "description": "CSV file"}},
+)
 def download_rejected_examples(import_id: UUID, ctx: Viewer, settings: SettingsDep) -> Response:
     """Up to 20 example rows per rejection reason (the full rejected-row export comes later)."""
     report = get_import_report(import_id, ctx, settings)

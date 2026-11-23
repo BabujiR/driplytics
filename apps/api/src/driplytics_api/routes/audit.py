@@ -7,12 +7,13 @@ from fastapi import APIRouter, Depends, Query
 from driplytics_api.auth.deps import TenantContext, require_role
 from driplytics_api.auth.roles import Role
 from driplytics_api.db.connection import request_tx
+from driplytics_api.responses import COMMON_ERRORS, AuditEventOut
 from driplytics_api.settings import Settings, get_settings
 
-router = APIRouter(prefix="/api/v1", tags=["audit"])
+router = APIRouter(prefix="/api/v1", tags=["audit"], responses=COMMON_ERRORS)
 
 
-@router.get("/audit")
+@router.get("/audit", response_model=list[AuditEventOut])
 def list_audit_events(
     ctx: Annotated[TenantContext, Depends(require_role(Role.ADMIN))],
     settings: Annotated[Settings, Depends(get_settings)],

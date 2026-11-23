@@ -7,12 +7,13 @@ from fastapi import APIRouter, Depends
 from driplytics_api.auth.deps import Principal, TenantContext, current_principal, require_role
 from driplytics_api.auth.roles import Role
 from driplytics_api.db.connection import request_tx
+from driplytics_api.responses import COMMON_ERRORS, CurrentTenantOut, MeOut
 from driplytics_api.settings import Settings, get_settings
 
-router = APIRouter(prefix="/api/v1", tags=["identity"])
+router = APIRouter(prefix="/api/v1", tags=["identity"], responses=COMMON_ERRORS)
 
 
-@router.get("/me")
+@router.get("/me", response_model=MeOut)
 def me(
     principal: Annotated[Principal, Depends(current_principal)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -28,7 +29,7 @@ def me(
     return {"user": user, "memberships": memberships}
 
 
-@router.get("/tenants/current")
+@router.get("/tenants/current", response_model=CurrentTenantOut)
 def current_tenant_info(
     ctx: Annotated[TenantContext, Depends(require_role(Role.VIEWER))],
     settings: Annotated[Settings, Depends(get_settings)],

@@ -7,11 +7,16 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "generate": "node scripts/generate.mjs",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "node scripts/generate.mjs --check && vitest run"
+  },
+  "dependencies": {
+    "openapi-fetch": "^0.13.4"
   },
   "devDependencies": {
+    "openapi-typescript": "^7.4.4",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   }

@@ -64,10 +64,13 @@ If PowerShell blocks the script: `Set-ExecutionPolicy -Scope CurrentUser RemoteS
 
 ## Project status
 
-**Phase 0 (foundations) in progress.** Backend done: P0-01 to P0-12, P0-20, P0-24: workspaces, Docker stack,
+**Phase 0 (foundations) in progress.** Backend done: P0-01 to P0-13, P0-20, P0-24: workspaces, Docker stack,
 engine, schema with row-level security, isolation tests, sign-in and roles, audit log, sites and export
-profiles, direct-to-storage uploads, the worker import job, CI and the portability check.
-Next: P0-13 (generated API client), then the frontend P0-14 to P0-18.
+profiles, direct-to-storage uploads, the worker import job, the typed API client, CI and the portability check.
+Next: the frontend, P0-14 to P0-18.
+
+**Changing the API?** Run `.\tasks.ps1 contracts` and commit `packages/contracts/openapi.json` and
+`packages/contracts/src/generated/openapi.ts`; tests fail until they match the API (ADR 0020).
 
 ## Repository guide
 

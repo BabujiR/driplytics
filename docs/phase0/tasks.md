@@ -16,13 +16,13 @@ Estimates are in focused days for one developer working with an AI coding agent.
 | P0-10 | Site CRUD endpoints + export profile model | P0-08 | 0.5 | ✅ done: sites + export profiles CRUD, `tag_mapping.csv` upload validated by the engine |
 | P0-11 | Upload flow: presigned multipart URLs, import record, `start` endpoint | P0-10 | 1.0 | ✅ done: presigned direct uploads, start/status/list/report/examples (ADR 0019) |
 | P0-12 | Arq worker: `import_file` job, Parquet partition writer, report storage, progress events | P0-05, P0-11 | 1.5 | ✅ done: Arq `import_file` job; end-to-end test + `.\tasks.ps1 demo` |
-| P0-13 | OpenAPI export + generated TypeScript client in `packages/contracts` | P0-10 | 0.5 | blocked by P0-10 |
+| P0-13 | OpenAPI export + generated TypeScript client in `packages/contracts` | P0-10 | 0.5 | ✅ done: response models, `openapi.json`, openapi-typescript + openapi-fetch client (ADR 0020) |
 | P0-14 | Design tokens (light/dark, density modes) + Tailwind config + white-label token override | P0-03 | 1.0 | ready (ADR 0008, 0016) |
 | P0-15 | Storybook with base components (Button, Input, Table, Chip, Card, Banner, Stat, EmptyState, Skeleton, Dialog, Toast) + states | P0-14 | 2.0 | ready |
 | P0-16 | App shell: sidebar navigation, top bar, site switcher, Cmd+K placeholder, theme toggle | P0-15 | 1.0 | ready |
-| P0-17 | Upload screen (drag and drop, format detection preview, progress) | P0-13, P0-16 | 1.0 | blocked by P0-13 |
+| P0-17 | Upload screen (drag and drop, format detection preview, progress) | P0-13, P0-16 | 1.0 | blocked by P0-16 |
 | P0-18 | Import report screen (balanced stacked bar, reasons table, examples, rejected CSV) | P0-17 | 1.0 | blocked by P0-17 |
-| P0-19 | Demo tenant seeder: "Riverbend Water Treatment (synthetic)", 30 days, mapping, one import | P0-12 | 0.5 | blocked by P0-12 |
+| P0-19 | Demo tenant seeder: "Riverbend Water Treatment (synthetic)", 30 days, mapping, one import | P0-12 | 0.5 | ready |
 | P0-20 | CI pipeline: lint, types, unit tests, engine smoke benchmark, Playwright upload→report, axe | P0-18 | 1.0 | ✅ done: `.github/workflows/ci.yml` (Python + DB isolation, web build, compose) |
 | P0-21 | ADRs 0001–0016 | answers | 0.5 | ✅ done (0001–0016) |
 | P0-23 | Terraform `infra/terraform/gcp/`: Cloud Run (api, worker, web), Cloud SQL Postgres, Cloud Storage, Memorystore Redis, Secret Manager, Artifact Registry; GitHub Actions deploy via Workload Identity Federation | P0-04 | 1.5 | ready (ADR 0007) |

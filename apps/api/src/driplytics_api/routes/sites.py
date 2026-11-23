@@ -14,12 +14,21 @@ from driplytics_api import audit
 from driplytics_api.auth.deps import TenantContext, require_role
 from driplytics_api.auth.roles import Role
 from driplytics_api.db.connection import Conn, request_tx
+from driplytics_api.responses import (
+    COMMON_ERRORS,
+    ErrorOut,
+    ExportProfileOut,
+    SiteOut,
+    TagMappingOut,
+    TagMappingUploadOut,
+)
 from driplytics_api.schemas import ExportProfileCreate, ExportProfileUpdate, SiteCreate, SiteUpdate
 from driplytics_api.settings import Settings, get_settings
 from driplytics_engine import TagMapping
 from driplytics_engine.mapping import MappingError
 
-router = APIRouter(prefix="/api/v1", tags=["sites"])
+router = APIRouter(prefix="/api/v1", tags=["sites"], responses=COMMON_ERRORS)
+CONFLICT: dict[int | str, dict[str, Any]] = {409: {"model": ErrorOut, "description": "Name already in use"}}
 
 Viewer = Annotated[TenantContext, Depends(require_role(Role.VIEWER))]
 Engineer = Annotated[TenantContext, Depends(require_role(Role.ENGINEER))]
@@ -47,13 +56,13 @@ def _get_site(conn: Conn, site_id: UUID) -> dict[str, Any]:
 
 
 # ------------------------------------------------------------------ sites
-@router.get("/sites")
+@router.get("/sites", response_model=list[SiteOut])
 def list_sites(ctx: Viewer, settings: SettingsDep) -> list[dict[str, Any]]:
     with _tx(settings, ctx) as conn:
         return conn.execute(f"SELECT {SITE_COLS} FROM site ORDER BY name").fetchall()
 
 
-@router.post("/sites", status_code=status.HTTP_201_CREATED)
+@router.post("/sites", status_code=status.HTTP_201_CREATED, response_model=SiteOut, responses=CONFLICT)
 def create_site(body: SiteCreate, ctx: Admin, settings: SettingsDep) -> dict[str, Any]:
     with _tx(settings, ctx) as conn:
         try:
@@ -80,13 +89,13 @@ def create_site(body: SiteCreate, ctx: Admin, settings: SettingsDep) -> dict[str
         return row
 
 
-@router.get("/sites/{site_id}")
+@router.get("/sites/{site_id}", response_model=SiteOut)
 def get_site(site_id: UUID, ctx: Viewer, settings: SettingsDep) -> dict[str, Any]:
     with _tx(settings, ctx) as conn:
         return _get_site(conn, site_id)
 
 
-@router.patch("/sites/{site_id}")
+@router.patch("/sites/{site_id}", response_model=SiteOut, responses=CONFLICT)
 def update_site(site_id: UUID, body: SiteUpdate, ctx: Engineer, settings: SettingsDep) -> dict[str, Any]:
     changes = body.model_dump(exclude_none=True)
     with _tx(settings, ctx) as conn:
@@ -134,7 +143,7 @@ def delete_site(site_id: UUID, ctx: Admin, settings: SettingsDep) -> None:
 
 
 # ------------------------------------------------------------------ export profiles
-@router.get("/sites/{site_id}/export-profiles")
+@router.get("/sites/{site_id}/export-profiles", response_model=list[ExportProfileOut])
 def list_export_profiles(site_id: UUID, ctx: Viewer, settings: SettingsDep) -> list[dict[str, Any]]:
     with _tx(settings, ctx) as conn:
         _get_site(conn, site_id)
@@ -144,7 +153,12 @@ def list_export_profiles(site_id: UUID, ctx: Viewer, settings: SettingsDep) -> l
         ).fetchall()
 
 
-@router.post("/sites/{site_id}/export-profiles", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/sites/{site_id}/export-profiles",
+    status_code=status.HTTP_201_CREATED,
+    response_model=ExportProfileOut,
+    responses=CONFLICT,
+)
 def create_export_profile(
     site_id: UUID, body: ExportProfileCreate, ctx: Engineer, settings: SettingsDep
 ) -> dict[str, Any]:
@@ -172,7 +186,7 @@ def create_export_profile(
         return row
 
 
-@router.patch("/export-profiles/{profile_id}")
+@router.patch("/export-profiles/{profile_id}", response_model=ExportProfileOut)
 def update_export_profile(
     profile_id: UUID, body: ExportProfileUpdate, ctx: Engineer, settings: SettingsDep
 ) -> dict[str, Any]:
@@ -204,7 +218,7 @@ def update_export_profile(
 
 
 # ------------------------------------------------------------------ tag mappings
-@router.get("/sites/{site_id}/tag-mappings")
+@router.get("/sites/{site_id}/tag-mappings", response_model=list[TagMappingOut])
 def list_tag_mappings(site_id: UUID, ctx: Viewer, settings: SettingsDep) -> list[dict[str, Any]]:
     """Every known tag of the site, mapped or not (unmapped tags have role = null)."""
     with _tx(settings, ctx) as conn:
@@ -218,7 +232,11 @@ def list_tag_mappings(site_id: UUID, ctx: Viewer, settings: SettingsDep) -> list
         ).fetchall()
 
 
-@router.put("/sites/{site_id}/tag-mappings/csv")
+@router.put(
+    "/sites/{site_id}/tag-mappings/csv",
+    response_model=TagMappingUploadOut,
+    responses={413: {"model": ErrorOut, "description": "File larger than 5 MB"}},
+)
 def upload_tag_mapping_csv(
     site_id: UUID, file: UploadFile, ctx: Engineer, settings: SettingsDep
 ) -> dict[str, Any]:
