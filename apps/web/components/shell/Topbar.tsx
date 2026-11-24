@@ -114,7 +114,8 @@ function UserMenu({ user, orgs, orgId }: { user: ShellUser; orgs: ShellOrg[]; or
       <button
         type="button"
         popoverTarget="dl-user-menu"
-        aria-label={`Account: ${user.name ?? user.email}`}
+        // The accessible name starts with the visible initials (WCAG 2.5.3, label in name).
+        aria-label={`${initials(user.name ?? user.email)}: account menu for ${user.name ?? user.email}`}
         className="flex size-8 items-center justify-center rounded-full bg-primary-soft text-xs font-semibold text-primary-soft-fg hover:ring-2 hover:ring-border-strong"
       >
         {initials(user.name ?? user.email)}
