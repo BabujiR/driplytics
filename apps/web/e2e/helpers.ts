@@ -19,9 +19,13 @@ export async function signIn(page: Page, user = "alice"): Promise<void> {
 
 /** No serious or critical WCAG 2.1 A/AA violations (axe-core). */
 export async function expectAccessible(page: Page, label: string): Promise<void> {
-  const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
+  const results = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    .exclude("nextjs-portal") // Next.js dev tools overlay (only in `next dev`), not our UI
+    .analyze();
   const serious = results.violations
     .filter((v) => v.impact === "serious" || v.impact === "critical")
     .map((v) => `${v.id} (${v.impact}): ${v.help} → ${v.nodes.map((n) => n.target.join(" ")).slice(0, 3).join(", ")}`);
+  if (serious.length) console.log(`\n${label}: accessibility violations\n  - ${serious.join("\n  - ")}\n`);
   expect(serious, `${label}: accessibility violations`).toEqual([]);
 }

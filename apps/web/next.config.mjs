@@ -12,6 +12,8 @@ const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@driplytics/ui", "@driplytics/contracts"],
   poweredByHeader: false,
+  // No floating "N" dev-tools button: it overlaps the sidebar and isn't part of the product UI.
+  devIndicators: false,
 };
 
 export default nextConfig;

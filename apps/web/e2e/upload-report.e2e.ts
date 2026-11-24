@@ -12,8 +12,14 @@ import { FIXTURES, expectAccessible, signIn } from "./helpers";
 test("upload an export and read its import report", async ({ page }) => {
   await signIn(page);
 
-  await page.getByRole("link", { name: "Imports", exact: true }).click();
-  await page.getByRole("link", { name: "Upload export", exact: true }).click();
+  await page.goto("/data/imports");
+  const upload = page.getByRole("link", { name: "Upload export", exact: true });
+  await expect(upload).toBeVisible();
+  // In `next dev` the first click can land before the page has hydrated; retry until it navigates.
+  await expect(async () => {
+    await upload.click();
+    await expect(page).toHaveURL(/\/data\/imports\/new$/, { timeout: 5_000 });
+  }).toPass({ timeout: 60_000 });
   await expect(page.getByRole("heading", { name: "Upload a historian export" })).toBeVisible();
   await expectAccessible(page, "upload screen");
 

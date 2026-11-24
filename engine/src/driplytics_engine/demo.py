@@ -108,7 +108,7 @@ def generate(
     temp = 58 - 6 * day / max(days, 1) + 0.8 * np.sin((hour - 15) / 24 * 2 * np.pi) + rng.normal(0, 0.1, n)
 
     # Pump 201 runs 05:00-23:00 with a 20-minute stop around 13:00 on weekdays.
-    weekday = local.dayofweek.to_numpy() < 5
+    weekday = local.day_of_week.to_numpy() < 5
     pump = (hour >= 5) & (hour < 23) & ~(weekday & (hour >= 13) & (hour < 13 + 1 / 3))
 
     # Backwash valve FV-101: open 02:00-02:15 every day, otherwise closed.
