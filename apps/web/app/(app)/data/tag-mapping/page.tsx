@@ -13,6 +13,7 @@ import {
 } from "@driplytics/ui";
 import { Tags } from "lucide-react";
 
+import { MappingUpload } from "@/components/imports/MappingUpload";
 import { getAppContext, load } from "@/lib/api/server";
 
 export const metadata = { title: "Tag mapping" };
@@ -38,11 +39,14 @@ export default async function TagMappingPage() {
           ) : null
         }
       />
+      <div className="mb-(--dl-gap)">
+        <MappingUpload siteId={site.id} />
+      </div>
       {tags.length === 0 ? (
         <EmptyState
           icon={Tags}
           title="No tags yet"
-          description="Tags appear after the first import or a tag_mapping.csv upload. The mapping assistant arrives in Phase 1."
+          description="Tags appear after the first import or a tag_mapping.csv upload (above). The mapping assistant arrives in Phase 1."
         />
       ) : (
         <Table>

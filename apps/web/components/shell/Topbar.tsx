@@ -41,6 +41,14 @@ export function Topbar({ user, orgs, orgId, sites, siteId }: TopbarProps) {
   const router = useRouter();
   const site = sites.find((s) => s.id === siteId) ?? null;
 
+  // Pages fall back to the first organization and site when nothing is chosen yet; write that choice
+  // into the cookies so browser calls through /api/v1 use the same organization and site.
+  useEffect(() => {
+    const has = (name: string, value: string) => document.cookie.split("; ").includes(`${name}=${value}`);
+    if (!has("dl_tenant", orgId)) setSelectionCookie("dl_tenant", orgId);
+    if (siteId && !has("dl_site", siteId)) setSelectionCookie("dl_site", siteId);
+  }, [orgId, siteId]);
+
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-surface/95 px-3 backdrop-blur sm:px-4">
       <Button variant="ghost" size="icon" className="md:hidden" aria-label="Open menu" popoverTarget="dl-mobile-nav">

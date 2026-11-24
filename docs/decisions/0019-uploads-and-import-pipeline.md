@@ -32,4 +32,5 @@ step must stay inside the tenant's row-level security.
   (`.\tasks.ps1 demo`).
 - Full rejected-row export is not stored yet; the report keeps up to 20 examples per reason
   (`/imports/{id}/rejected-examples.csv`).
-- Multipart uploads for files over 5 GB come with the upload screen (P0-17).
+- Files are limited to 5 GB for now (the S3 single-PUT limit). Multipart uploads for bigger files are a
+  follow-up (presigned part URLs + complete), tracked as P0-17b; split larger exports by month meanwhile.

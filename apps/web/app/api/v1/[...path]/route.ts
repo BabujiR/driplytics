@@ -39,7 +39,14 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
     if (v) headers.set(h, v);
   }
   headers.set("authorization", `Bearer ${session.at}`);
-  const tenant = store.get(TENANT_COOKIE)?.value;
+  // The selected organization: the dl_tenant cookie, or (first visit, nothing chosen yet) the user's
+  // first organization, the same default the pages use. Remembered in the cookie below.
+  let tenant = store.get(TENANT_COOKIE)?.value;
+  let rememberTenant = false;
+  if (!tenant && !headers.has("x-tenant-id")) {
+    tenant = await firstTenant(session.at);
+    rememberTenant = Boolean(tenant);
+  }
   if (tenant && !headers.has("x-tenant-id")) headers.set("x-tenant-id", tenant);
 
   let upstream: Response;
@@ -60,7 +67,23 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
     const v = upstream.headers.get(h);
     if (v) out.set(h, v);
   }
-  return new NextResponse(upstream.status === 204 ? null : upstream.body, { status: upstream.status, headers: out });
+  const res = new NextResponse(upstream.status === 204 ? null : upstream.body, { status: upstream.status, headers: out });
+  if (rememberTenant && tenant) res.cookies.set(TENANT_COOKIE, tenant, { path: "/", sameSite: "lax", maxAge: 31536000 });
+  return res;
+}
+
+async function firstTenant(accessToken: string): Promise<string | undefined> {
+  try {
+    const r = await fetch(`${apiInternalUrl()}/api/v1/me`, {
+      headers: { authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
+    });
+    if (!r.ok) return undefined;
+    const me = (await r.json()) as { memberships?: Array<{ tenant_id: string }> };
+    return me.memberships?.[0]?.tenant_id;
+  } catch {
+    return undefined;
+  }
 }
 
 export { proxy as DELETE, proxy as GET, proxy as PATCH, proxy as POST, proxy as PUT };

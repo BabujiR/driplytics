@@ -27,8 +27,12 @@ export default async function WorklistPage() {
   const latest = imports[0];
   const mapped = tags.filter((t) => t.role !== null).length;
   const steps = [
-    { done: imports.length > 0, label: "Upload a historian export", href: "/data/imports" },
-    { done: imports.some((i) => i.status === "succeeded"), label: "Review the import report", href: "/data/imports" },
+    { done: imports.length > 0, label: "Upload a historian export", href: "/data/imports/new" },
+    {
+      done: imports.some((i) => i.status === "succeeded"),
+      label: "Review the import report",
+      href: latest ? `/data/imports/${latest.id}` : "/data/imports",
+    },
     { done: tags.length > 0 && mapped === tags.length, label: "Confirm the tag mapping", href: "/data/tag-mapping" },
     { done: false, label: "See the first findings (Phase 1)", href: "/findings" },
   ];

@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     storage_public_endpoint_url: str | None = None
     storage_region: str = "us-east-1"
     upload_url_expiry_s: int = 3600
-    max_upload_bytes: int = 20 * 1024**3  # 20 GB per file
+    max_upload_bytes: int = 5 * 1024**3  # 5 GB: the S3 single-PUT limit (multipart uploads: ADR 0019)
 
     # Background jobs (Arq on Redis, ADR 0006)
     queue_name: str = "arq:queue"

@@ -20,8 +20,8 @@ Estimates are in focused days for one developer working with an AI coding agent.
 | P0-14 | Design tokens (light/dark, density modes) + Tailwind config + white-label token override | P0-03 | 1.0 | ✅ done: `packages/ui/src/styles` (Tailwind v4, tokens only, AA contrast tested) |
 | P0-15 | Storybook with base components (Button, Input, Table, Chip, Card, Banner, Stat, EmptyState, Skeleton, Dialog, Toast) + states | P0-14 | 2.0 | ✅ done: 15 components, stories with theme/density toolbar + axe (`.\tasks.ps1 storybook`) |
 | P0-16 | App shell: sidebar navigation, top bar, site switcher, Cmd+K placeholder, theme toggle | P0-15 | 1.0 | ✅ done: shell, browser sign-in (Keycloak), API proxy, Worklist / Imports / Tag mapping pages |
-| P0-17 | Upload screen (drag and drop, format detection preview, progress) | P0-13, P0-16 | 1.0 | ready |
-| P0-18 | Import report screen (balanced stacked bar, reasons table, examples, rejected CSV) | P0-17 | 1.0 | blocked by P0-17 |
+| P0-17 | Upload screen (drag and drop, format detection preview, progress) | P0-13, P0-16 | 1.0 | ✅ done: `/data/imports/new`: preview + format detection, optional tag mapping, direct upload with progress. Files ≤ 5 GB; multipart → P0-17b |
+| P0-18 | Import report screen (balanced stacked bar, reasons table, examples, rejected CSV) | P0-17 | 1.0 | ✅ done: `/data/imports/{id}`: ledger bar + equation, sortable reasons with examples, CSV, DST/totalizer events, unmapped-tag banner, live progress |
 | P0-19 | Demo tenant seeder: "Riverbend Water Treatment (synthetic)", 30 days, mapping, one import | P0-12 | 0.5 | ready |
 | P0-20 | CI pipeline: lint, types, unit tests, engine smoke benchmark, Playwright upload→report, axe | P0-18 | 1.0 | ✅ done: `.github/workflows/ci.yml` (Python + DB isolation, web build, compose) |
 | P0-21 | ADRs 0001–0016 | answers | 0.5 | ✅ done (0001–0016) |

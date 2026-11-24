@@ -1,5 +1,4 @@
 import {
-  Banner,
   Chip,
   EmptyState,
   PageHeader,
@@ -11,10 +10,12 @@ import {
   TR,
   Table,
   TableCaption,
+  buttonVariants,
   formatBytes,
   formatDateTime,
 } from "@driplytics/ui";
 import { Upload } from "lucide-react";
+import Link from "next/link";
 
 import { getAppContext, load } from "@/lib/api/server";
 import { importStatus } from "@/lib/imports";
@@ -33,16 +34,23 @@ export default async function ImportsPage() {
         title="Imports"
         description="Historian exports uploaded for this site. Every value is accounted for: accepted, rejected with a reason, or a duplicate."
         breadcrumbs={[site.name, "Data", "Imports"]}
+        actions={
+          <Link href="/data/imports/new" className={buttonVariants({ variant: "primary" })}>
+            <Upload /> Upload export
+          </Link>
+        }
       />
-      <Banner tone="info" title="Uploading from the browser comes next (P0-17)" className="mb-(--dl-gap)">
-        Until then, run <code className="font-mono">.\tasks.ps1 demo</code> to import the sample export for this site.
-      </Banner>
 
       {imports.length === 0 ? (
         <EmptyState
           icon={Upload}
           title="No imports yet"
           description="Upload a PI or IP.21 export (CSV or Parquet, long or wide format) to see its import report."
+          action={
+            <Link href="/data/imports/new" className={buttonVariants({ variant: "primary" })}>
+              Upload an export
+            </Link>
+          }
         />
       ) : (
         <Table>
@@ -61,7 +69,11 @@ export default async function ImportsPage() {
               const s = importStatus(imp);
               return (
                 <TR key={imp.id}>
-                  <TD mono>{imp.original_filename ?? "—"}</TD>
+                  <TD mono>
+                    <Link href={`/data/imports/${imp.id}`} className="text-primary underline-offset-4 hover:underline">
+                      {imp.original_filename ?? "(no name)"}
+                    </Link>
+                  </TD>
                   <TD>
                     <Chip tone={s.tone}>{s.label}</Chip>
                     {imp.error ? <p className="mt-1 max-w-md text-xs text-fg-muted">{imp.error}</p> : null}
