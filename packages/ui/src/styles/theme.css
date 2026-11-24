@@ -1,0 +1,102 @@
+/*
+ * Tailwind v4 theme built ONLY from the design tokens (tokens.css). `--color-*: initial` removes
+ * Tailwind's default palette, so a raw color such as `bg-blue-500` doesn't exist: every color comes
+ * from a token and follows the theme, density and white-label overrides.
+ */
+@theme inline {
+  --color-*: initial;
+  --color-white: #fff;
+  --color-black: #000;
+
+  --color-bg: var(--dl-bg);
+  --color-surface: var(--dl-surface);
+  --color-surface-2: var(--dl-surface-2);
+  --color-surface-3: var(--dl-surface-3);
+  --color-border: var(--dl-border);
+  --color-border-strong: var(--dl-border-strong);
+  --color-fg: var(--dl-fg);
+  --color-fg-muted: var(--dl-fg-muted);
+  --color-fg-subtle: var(--dl-fg-subtle);
+  --color-overlay: var(--dl-overlay);
+
+  --color-primary: var(--dl-primary);
+  --color-primary-hover: var(--dl-primary-hover);
+  --color-primary-fg: var(--dl-primary-fg);
+  --color-primary-soft: var(--dl-primary-soft);
+  --color-primary-soft-fg: var(--dl-primary-soft-fg);
+  --color-focus: var(--dl-focus);
+
+  --color-critical: var(--dl-critical);
+  --color-critical-soft: var(--dl-critical-soft);
+  --color-critical-fg: var(--dl-critical-fg);
+  --color-critical-border: var(--dl-critical-border);
+  --color-warning: var(--dl-warning);
+  --color-warning-soft: var(--dl-warning-soft);
+  --color-warning-fg: var(--dl-warning-fg);
+  --color-warning-border: var(--dl-warning-border);
+  --color-success: var(--dl-success);
+  --color-success-soft: var(--dl-success-soft);
+  --color-success-fg: var(--dl-success-fg);
+  --color-success-border: var(--dl-success-border);
+  --color-neutral: var(--dl-neutral);
+  --color-neutral-soft: var(--dl-neutral-soft);
+  --color-neutral-fg: var(--dl-neutral-fg);
+  --color-neutral-border: var(--dl-neutral-border);
+  --color-info: var(--dl-info);
+  --color-info-soft: var(--dl-info-soft);
+  --color-info-fg: var(--dl-info-fg);
+  --color-info-border: var(--dl-info-border);
+
+  --font-sans: var(--dl-font-sans);
+  --font-mono: var(--dl-font-mono);
+
+  --radius-sm: var(--dl-radius-sm);
+  --radius-md: var(--dl-radius-md);
+  --radius-lg: var(--dl-radius-lg);
+
+  --shadow-sm: var(--dl-shadow-sm);
+  --shadow-md: var(--dl-shadow-md);
+  --shadow-lg: var(--dl-shadow-lg);
+
+  --animate-toast-in: dl-toast-in 160ms ease-out;
+}
+
+@keyframes dl-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
+
+@layer base {
+  html {
+    font-family: var(--dl-font-sans);
+    font-size: 100%;
+    background: var(--dl-bg);
+    color: var(--dl-fg);
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    font-size: var(--dl-text-body);
+    line-height: 1.5;
+  }
+  :focus-visible {
+    outline: 2px solid var(--dl-focus);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--dl-primary-soft);
+    color: var(--dl-primary-soft-fg);
+  }
+  dialog::backdrop {
+    background: var(--dl-overlay);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

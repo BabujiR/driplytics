@@ -24,3 +24,4 @@ Read these before starting any work. **Where an ADR differs from a default in `C
 | [0018](0018-database-access-psycopg-and-sql-migrations.md) | psycopg at runtime; Alembic with SQL-file migrations; owner vs runtime DB roles | Accepted |
 | [0019](0019-uploads-and-import-pipeline.md) | Presigned direct-to-storage uploads; one import = one idempotent worker job | Accepted |
 | [0020](0020-api-contract-openapi-typescript.md) | Response models → committed OpenAPI → openapi-typescript types + openapi-fetch client | Accepted |
+| [0021](0021-web-sign-in-and-api-proxy.md) | Web sign-in: server-side OIDC + PKCE, encrypted cookie session, same-origin API proxy | Accepted |

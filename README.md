@@ -35,7 +35,7 @@ When the stack is healthy (`.\tasks.ps1 ps` shows every service as *healthy*):
 
 | Service | URL | Login |
 |---|---|---|
-| Web app | http://localhost:3000 | (shows live stack status in Phase 0) |
+| Web app | http://localhost:3000 | `alice` or `bob` / `Passw0rd!dev` (Keycloak sign-in) · stack status: http://localhost:3000/status |
 | API docs | http://localhost:8000/api/docs | — |
 | API readiness | http://localhost:8000/health/ready | — |
 | MinIO console (object storage) | http://localhost:9001 | driplytics / driplytics-dev-secret |
@@ -49,6 +49,9 @@ All passwords above are **local development defaults only**.
 mapping, uploads a historian export straight to object storage, runs the import on the worker and prints
 `5,179 = 5,157 accepted + 19 rejected + 3 duplicates`. Pass your own file:
 `uv run python apps/api/scripts/dev_import.py my_export.csv --mapping my_tags.csv`.
+
+**Design system:** `.\tasks.ps1 storybook` opens every component and state at http://localhost:6006
+(toolbar: light/dark theme, comfortable/compact density; the Accessibility tab runs axe).
 
 **Before pushing:** `.\tasks.ps1 check` runs what CI runs (lint, strict types, portability, all tests).
 
@@ -64,10 +67,11 @@ If PowerShell blocks the script: `Set-ExecutionPolicy -Scope CurrentUser RemoteS
 
 ## Project status
 
-**Phase 0 (foundations) in progress.** Backend done: P0-01 to P0-13, P0-20, P0-24: workspaces, Docker stack,
+**Phase 0 (foundations) in progress.** Done: P0-01 to P0-16, P0-20, P0-24: workspaces, Docker stack,
 engine, schema with row-level security, isolation tests, sign-in and roles, audit log, sites and export
-profiles, direct-to-storage uploads, the worker import job, the typed API client, CI and the portability check.
-Next: the frontend, P0-14 to P0-18.
+profiles, direct-to-storage uploads, the worker import job, the typed API client, the design system with
+Storybook, and the signed-in app shell. CI and the portability check run on every push.
+Next: the upload screen (P0-17) and the import report screen (P0-18).
 
 **Changing the API?** Run `.\tasks.ps1 contracts` and commit `packages/contracts/openapi.json` and
 `packages/contracts/src/generated/openapi.ts`; tests fail until they match the API (ADR 0020).

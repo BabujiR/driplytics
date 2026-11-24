@@ -47,14 +47,15 @@ function Test-Prereqs {
 switch ($Task) {
   "doctor"    { if (-not (Test-Prereqs)) { exit 1 } }
   "install"   { if (-not (Test-Prereqs)) { exit 1 }; Run "uv sync --all-packages"; Ensure-Pnpm; Run "pnpm install" }
-  "dev"       { Run "docker compose up --build" }
-  "up"        { Run "docker compose up --build -d" }
+  "dev"       { Run "docker compose up --build --renew-anon-volumes" }
+  "up"        { Run "docker compose up --build -d --renew-anon-volumes" }
   "down"      { Run "docker compose down" }
   "logs"      { Run "docker compose logs -f" }
   "ps"        { Run "docker compose ps" }
   "test"      { Run "uv run --all-packages pytest"; Run "pnpm test" }
   "test-py"   { Run "uv run --all-packages pytest" }
   "test-js"   { Run "pnpm test" }
+  "storybook" { Run "pnpm --filter @driplytics/ui storybook" }
   "test-db"   { Run "uv run --all-packages pytest -m db" }
   "migrate"   { Run "docker compose run --rm migrate" }
   "token"     { Run "uv run python apps/api/scripts/dev_token.py alice --tenant" }
@@ -67,6 +68,6 @@ switch ($Task) {
   "bench"     { Run "uv run python engine/scripts/benchmark.py --days 1" }
   "clean"     { Run "docker compose down -v" }
   default {
-    Write-Host "Targets: doctor, install, dev, up, down, logs, ps, test, test-py, test-js, test-db, migrate, token, demo, contracts, check, lint, typecheck, fmt, bench, clean"
+    Write-Host "Targets: doctor, install, dev, up, down, logs, ps, test, test-py, test-js, test-db, migrate, token, demo, contracts, storybook, check, lint, typecheck, fmt, bench, clean"
   }
 }

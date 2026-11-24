@@ -1,4 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // A component library: compile JSX with the automatic runtime (no `import React` needed).
+    // Next.js transpiles this package with its own settings; Storybook (Vite) reads this.
+    "jsx": "react-jsx"
+  },
   "include": ["src"]
 }

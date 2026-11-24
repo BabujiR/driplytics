@@ -179,15 +179,26 @@ services:
     environment:
       API_INTERNAL_URL: http://api:8000
       WATCHPACK_POLLING: "true"   # reliable hot reload on Windows/macOS bind mounts
+      # Browser sign-in (ADR 0021). The server reads Keycloak's endpoints over the Docker network;
+      # Keycloak still sends the browser to http://localhost:8080 (KC_HOSTNAME).
+      APP_URL: http://localhost:${WEB_PORT:-3000}
+      OIDC_DISCOVERY_URL: http://keycloak:8080/realms/driplytics/.well-known/openid-configuration
+      OIDC_CLIENT_ID: driplytics-web
+      OIDC_CLIENT_SECRET: driplytics-web-dev-secret     # local realm only
+      SESSION_SECRET: ${WEB_SESSION_SECRET:-local-dev-session-secret-not-for-production}
     ports: ["${WEB_PORT:-3000}:3000"]
     volumes:
       - ./apps/web:/app/apps/web
       - ./packages:/app/packages
+      # Keep the image's installed packages (Linux) instead of the host's node_modules folders.
       - /app/node_modules
       - /app/apps/web/node_modules
+      - /app/packages/ui/node_modules
+      - /app/packages/contracts/node_modules
       - /app/apps/web/.next
     depends_on:
       api: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
       interval: 10s
