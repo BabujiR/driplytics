@@ -47,7 +47,9 @@ export function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
                 <Icon aria-hidden className="size-4 shrink-0" />
                 <span className="flex-1 truncate">{label}</span>
                 {phase ? (
-                  <span className="text-[0.6875rem] text-fg-subtle" title={`Arrives in ${phase}`}>
+                  // On the highlighted (current) item the label takes the item's color: subtle gray on the
+                  // blue highlight would fall below 4.5:1 contrast.
+                  <span className={cn("text-[0.6875rem]", !active && "text-fg-subtle")} title={`Arrives in ${phase}`}>
                     soon
                   </span>
                 ) : null}
