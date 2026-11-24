@@ -62,25 +62,26 @@ def multipart(field: str, filename: str, content: bytes) -> tuple[bytes, str]:
     return body, f"multipart/form-data; boundary={boundary}"
 
 
-def main() -> int:
-    p = argparse.ArgumentParser()
-    p.add_argument("file", nargs="?", default=str(FIXTURES / "historian_long.csv"))
-    p.add_argument("--mapping", default=str(FIXTURES / "tag_mapping.csv"))
-    a = p.parse_args()
-    export, mapping = Path(a.file), Path(a.mapping)
-
-    token = get_token("alice", PASSWORD)
+def import_file(export: Path, mapping: Path | None, user: str = "alice", site_name: str | None = None) -> int:
+    """Sign in, (optionally) upload the tag mapping, upload the export, run the import, print the ledger.
+    Returns the process exit code."""
+    token = get_token(user, PASSWORD)
     me = request("GET", "/api/v1/me", token)
     tenant = me["memberships"][0]["tenant_id"]  # type: ignore[index]
     sites = request("GET", "/api/v1/sites", token, tenant)
-    site = sites[0]  # type: ignore[index]
-    print(f"Signed in as alice -> {me['memberships'][0]['name']} / site '{site['name']}'")  # type: ignore[index]
+    matches = [s for s in sites if site_name is None or s["name"] == site_name]  # type: ignore[union-attr,index]
+    if not matches:
+        print(f"No site named {site_name!r} in {me['memberships'][0]['name']}")  # type: ignore[index]
+        return 1
+    site = matches[0]
+    print(f"Signed in as {user} -> {me['memberships'][0]['name']} / site '{site['name']}'")  # type: ignore[index]
 
-    body, ctype = multipart("file", mapping.name, mapping.read_bytes())
-    r = request(
-        "PUT", f"/api/v1/sites/{site['id']}/tag-mappings/csv", token, tenant, raw=body, content_type=ctype
-    )
-    print(f"Tag mapping uploaded: {r['mapped_tags']} tags")  # type: ignore[index]
+    if mapping is not None:
+        body, ctype = multipart("file", mapping.name, mapping.read_bytes())
+        r = request(
+            "PUT", f"/api/v1/sites/{site['id']}/tag-mappings/csv", token, tenant, raw=body, content_type=ctype
+        )
+        print(f"Tag mapping uploaded: {r['mapped_tags']} tags")  # type: ignore[index]
 
     created = request(
         "POST",
@@ -97,7 +98,7 @@ def main() -> int:
 
     request("POST", f"/api/v1/imports/{imp['id']}/start", token, tenant)
     print("Import queued; waiting for the worker", end="", flush=True)
-    for _ in range(600):
+    for _ in range(900):
         cur = request("GET", f"/api/v1/imports/{imp['id']}", token, tenant)
         if cur["status"] in ("succeeded", "failed"):  # type: ignore[index]
             break
@@ -116,8 +117,16 @@ def main() -> int:
         if n:
             print(f"  rejected {reason}: {n}")
     print("Scoring:", "ALLOWED" if s["scoring_allowed"] else "BLOCKED (map the unmapped tags)")
-    print(f"Full report: {API}/api/v1/imports/{imp['id']}/report  (needs the bearer token)")
+    print(f"Report in the app: http://localhost:3000/data/imports/{imp['id']}")
     return 0
+
+
+def main() -> int:
+    p = argparse.ArgumentParser()
+    p.add_argument("file", nargs="?", default=str(FIXTURES / "historian_long.csv"))
+    p.add_argument("--mapping", default=str(FIXTURES / "tag_mapping.csv"))
+    a = p.parse_args()
+    return import_file(Path(a.file), Path(a.mapping))
 
 
 if __name__ == "__main__":

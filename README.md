@@ -49,6 +49,12 @@ All passwords above are **local development defaults only**.
 drop `engine/tests/fixtures/data/historian_long.csv` (add `tag_mapping.csv` from the same folder as the tag mapping),
 start the import and read the report.
 
+**Load the demo plant** (stack running): `.\tasks.ps1 seed` imports a month of synthetic Riverbend data
+(about 300,000 values, a planted leak-by on valve FV-101) into alice's Riverbend WTP site.
+
+**End-to-end test** (stack running): `.\tasks.ps1 e2e` signs in, uploads an export and checks the report
+and accessibility in a real browser (Playwright), like CI does.
+
 **Or from the terminal** (stack running): `.\tasks.ps1 demo` signs in as alice, uploads the tag
 mapping, uploads a historian export straight to object storage, runs the import on the worker and prints
 `5,179 = 5,157 accepted + 19 rejected + 3 duplicates`. Pass your own file:
@@ -71,11 +77,12 @@ If PowerShell blocks the script: `Set-ExecutionPolicy -Scope CurrentUser RemoteS
 
 ## Project status
 
-**Phase 0 (foundations) in progress.** Done: P0-01 to P0-18, P0-20, P0-24: workspaces, Docker stack,
+**Phase 0 (foundations) in progress.** Done: P0-01 to P0-20, P0-24: workspaces, Docker stack,
 engine, schema with row-level security, isolation tests, sign-in and roles, audit log, sites and export
 profiles, direct-to-storage uploads, the worker import job, the typed API client, the design system with
 Storybook, the signed-in app shell, and the upload and import report screens. CI and the portability check
-run on every push. Next: the demo tenant seeder (P0-19) and the GCP environment (P0-23).
+run on every push, with an end-to-end browser test. Next: the GCP environment (P0-23) and your wireframe
+review (P0-22).
 
 **Changing the API?** Run `.\tasks.ps1 contracts` and commit `packages/contracts/openapi.json` and
 `packages/contracts/src/generated/openapi.ts`; tests fail until they match the API (ADR 0020).

@@ -82,3 +82,38 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker compose config --quiet
+
+  e2e:
+    name: End-to-end (sign in → upload → report, accessibility)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Start the stack (Postgres, Redis, MinIO, Keycloak, API, worker, web)
+        run: docker compose up --build -d
+      - name: Install Chromium for Playwright
+        run: pnpm --filter @driplytics/web exec playwright install --with-deps chromium
+      - name: Wait until the API and the web app answer
+        run: |
+          curl -sf --retry 60 --retry-delay 5 --retry-all-errors http://localhost:8000/health/ready > /dev/null
+          curl -sf --retry 60 --retry-delay 5 --retry-all-errors http://localhost:3000/status > /dev/null
+      - name: Playwright
+        run: pnpm --filter @driplytics/web e2e
+      - name: Collect container logs
+        if: failure()
+        run: docker compose logs --no-color > compose-logs.txt
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-report
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+            compose-logs.txt
+          retention-days: 7

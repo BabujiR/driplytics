@@ -60,6 +60,8 @@ switch ($Task) {
   "migrate"   { Run "docker compose run --rm migrate" }
   "token"     { Run "uv run python apps/api/scripts/dev_token.py alice --tenant" }
   "demo"      { Run "uv run python apps/api/scripts/dev_import.py" }
+  "seed"      { Run "uv run python apps/api/scripts/seed_demo.py" }
+  "e2e"       { Run "pnpm --filter @driplytics/web exec playwright install chromium"; Run "pnpm --filter @driplytics/web e2e" }
   "contracts" { Run "uv run python apps/api/scripts/export_openapi.py"; Run "pnpm --filter @driplytics/contracts generate" }
   "check"     { Run "uv run ruff check ."; Run "uv run ruff format --check ."; Run "uv run mypy"; Run "uv run python scripts/check_portability.py"; Run "uv run --all-packages pytest -ra" }
   "lint"      { Run "uv run ruff check ."; Run "uv run ruff format --check ."; Run "uv run mypy"; Run "pnpm lint" }
@@ -68,6 +70,6 @@ switch ($Task) {
   "bench"     { Run "uv run python engine/scripts/benchmark.py --days 1" }
   "clean"     { Run "docker compose down -v" }
   default {
-    Write-Host "Targets: doctor, install, dev, up, down, logs, ps, test, test-py, test-js, test-db, migrate, token, demo, contracts, storybook, check, lint, typecheck, fmt, bench, clean"
+    Write-Host "Targets: doctor, install, dev, up, down, logs, ps, test, test-py, test-js, test-db, migrate, token, demo, seed, e2e, contracts, storybook, check, lint, typecheck, fmt, bench, clean"
   }
 }

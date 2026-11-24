@@ -22,8 +22,8 @@ Estimates are in focused days for one developer working with an AI coding agent.
 | P0-16 | App shell: sidebar navigation, top bar, site switcher, Cmd+K placeholder, theme toggle | P0-15 | 1.0 | ✅ done: shell, browser sign-in (Keycloak), API proxy, Worklist / Imports / Tag mapping pages |
 | P0-17 | Upload screen (drag and drop, format detection preview, progress) | P0-13, P0-16 | 1.0 | ✅ done: `/data/imports/new`: preview + format detection, optional tag mapping, direct upload with progress. Files ≤ 5 GB; multipart → P0-17b |
 | P0-18 | Import report screen (balanced stacked bar, reasons table, examples, rejected CSV) | P0-17 | 1.0 | ✅ done: `/data/imports/{id}`: ledger bar + equation, sortable reasons with examples, CSV, DST/totalizer events, unmapped-tag banner, live progress |
-| P0-19 | Demo tenant seeder: "Riverbend Water Treatment (synthetic)", 30 days, mapping, one import | P0-12 | 0.5 | ready |
-| P0-20 | CI pipeline: lint, types, unit tests, engine smoke benchmark, Playwright upload→report, axe | P0-18 | 1.0 | ✅ done: `.github/workflows/ci.yml` (Python + DB isolation, web build, compose) |
+| P0-19 | Demo tenant seeder: "Riverbend Water Treatment (synthetic)", 30 days, mapping, one import | P0-12 | 0.5 | ✅ done: `driplytics_engine.demo` (30 days, 7 tags, planted FV-101 leak-by) + `.\tasks.ps1 seed` |
+| P0-20 | CI pipeline: lint, types, unit tests, engine smoke benchmark, Playwright upload→report, axe | P0-18 | 1.0 | ✅ done: CI runs Python + DB isolation, web build, compose, and Playwright end-to-end (sign in → upload → report) with axe on the main pages, light and dark |
 | P0-21 | ADRs 0001–0016 | answers | 0.5 | ✅ done (0001–0016) |
 | P0-23 | Terraform `infra/terraform/gcp/`: Cloud Run (api, worker, web), Cloud SQL Postgres, Cloud Storage, Memorystore Redis, Secret Manager, Artifact Registry; GitHub Actions deploy via Workload Identity Federation | P0-04 | 1.5 | ready (ADR 0007) |
 | P0-24 | CI portability check: fail on `google.cloud` imports outside `infra/`; storage only through the fsspec `Storage` interface | P0-02 | 0.25 | ✅ done: `scripts/check_portability.py` runs in CI |
